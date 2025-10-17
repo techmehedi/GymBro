@@ -1,0 +1,22 @@
+{
+  "name": "peer-fitness-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for Peer Fitness Network",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create peer-fitness-db",
+    "db:migrate": "wrangler d1 migrations apply peer-fitness-db",
+    "db:local": "wrangler d1 execute peer-fitness-db --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.0.0",
+    "hono": "^3.12.0"
+  }
+}
