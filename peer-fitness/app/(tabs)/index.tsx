@@ -1,4 +1,3 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'expo-router';
 import React from 'react';
@@ -7,46 +6,28 @@ import { Card, Button } from 'react-native-paper';
 
 import { useFitnessStore } from '@/store/fitnessStore';
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function HomeScreen() {
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { user } = useAuth();
   const { groups, fetchGroups } = useFitnessStore();
 
   const { data: motivationalMessages, isLoading: messagesLoading } = useQuery({
     queryKey: ['motivational-messages'],
     queryFn: () => api.getMotivationalMessages(),
-    enabled: isSignedIn,
+    enabled: !!user,
   });
 
   React.useEffect(() => {
-    if (isSignedIn) {
+    if (user) {
       fetchGroups();
     }
-  }, [isSignedIn, fetchGroups]);
-
-  if (!isSignedIn) {
-    return (
-      <View className="flex-1 items-center justify-center p-6">
-        <Text className="text-2xl font-bold text-center mb-4">
-          Welcome to Peer Fitness Network
-        </Text>
-        <Text className="text-center text-gray-600 mb-8">
-          Stay accountable with your fitness goals alongside friends
-        </Text>
-        <Link href="/sign-in" asChild>
-          <Button mode="contained" className="w-full">
-            Sign In
-          </Button>
-        </Link>
-      </View>
-    );
-  }
+  }, [user, fetchGroups]);
 
   return (
     <ScrollView className="flex-1 bg-gray-50">
       <View className="p-6">
-        <Text className="text-2xl font-bold mb-2">Welcome back, {user?.firstName}!</Text>
+        <Text className="text-2xl font-bold mb-2">Welcome back, {user?.email?.split('@')[0]}!</Text>
         <Text className="text-gray-600 mb-6">Ready to crush your fitness goals today?</Text>
 
         {/* Quick Stats */}

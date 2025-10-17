@@ -1,4 +1,3 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -6,10 +5,10 @@ import { ScrollView, Text, View, Alert } from 'react-native';
 import { Card, Button, Switch, List } from 'react-native-paper';
 
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfileScreen() {
-  const { isSignedIn, signOut } = useAuth();
-  const { user } = useUser();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [dailyRemindersEnabled, setDailyRemindersEnabled] = useState(true);
@@ -27,7 +26,7 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.replace('/sign-in');
+      router.replace('/auth/sign-in');
     } catch (error) {
       Alert.alert('Error', 'Failed to sign out');
     }
@@ -50,19 +49,6 @@ export default function ProfileScreen() {
     }
   };
 
-  if (!isSignedIn) {
-    return (
-      <View className="flex-1 items-center justify-center p-6">
-        <Text className="text-xl font-bold text-center mb-4">
-          Please sign in to view profile
-        </Text>
-        <Button mode="contained" onPress={() => router.push('/sign-in')}>
-          Sign In
-        </Button>
-      </View>
-    );
-  }
-
   return (
     <ScrollView className="flex-1 bg-gray-50">
       <View className="p-6">
@@ -71,10 +57,10 @@ export default function ProfileScreen() {
         {/* User Info */}
         <Card className="mb-6">
           <Card.Content className="py-4">
-            <Text className="text-lg font-semibold mb-2">{user?.fullName}</Text>
-            <Text className="text-gray-600 mb-1">{user?.emailAddresses[0]?.emailAddress}</Text>
+            <Text className="text-lg font-semibold mb-2">{user?.email}</Text>
+            <Text className="text-gray-600 mb-1">User ID: {user?.id}</Text>
             <Text className="text-sm text-gray-500">
-              Member since {new Date(user?.createdAt!).toLocaleDateString()}
+              Member since {new Date(user?.created_at!).toLocaleDateString()}
             </Text>
           </Card.Content>
         </Card>

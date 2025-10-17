@@ -1,21 +1,28 @@
 import { Hono } from 'hono';
 import { Context } from 'hono';
+import { createClient } from '@supabase/supabase-js';
 
 export const authRouter = new Hono<{ Bindings: any }>();
 
 // Link user account (for push notifications)
 authRouter.post('/link', async (c: Context) => {
   try {
-    const { userId, pushToken } = await c.req.json();
+    const { pushToken } = await c.req.json();
 
-    if (!userId || !pushToken) {
-      return c.json({ error: 'User ID and push token are required' }, 400);
+    if (!pushToken) {
+      return c.json({ error: 'Push token is required' }, 400);
+    }
+
+    // Get user from context (set by auth middleware)
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ error: 'User not authenticated' }, 401);
     }
 
     // Update user's push token
     await c.env.DB
       .prepare('UPDATE users SET push_token = ? WHERE id = ?')
-      .bind(pushToken, userId)
+      .bind(pushToken, user.id)
       .run();
 
     return c.json({ message: 'Push token linked successfully' });
@@ -35,34 +42,38 @@ authRouter.get('/profile', async (c: Context) => {
     }
 
     const token = authHeader.substring(7);
-    const clerkSecretKey = c.env.CLERK_SECRET_KEY;
+    const supabaseUrl = c.env.SUPABASE_URL;
+    const supabaseServiceKey = c.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ error: 'Supabase configuration missing' }, 500);
+    }
+
+    // Create Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify token and get user info
-    const { verifyToken } = await import('@clerk/backend');
-    const payload = await verifyToken(token, {
-      secretKey: clerkSecretKey,
-    });
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    if (!payload) {
+    if (error || !user) {
       return c.json({ error: 'Invalid token' }, 401);
     }
 
-    const clerkId = payload.sub;
-    const user = await c.env.DB
-      .prepare('SELECT * FROM users WHERE clerk_id = ?')
-      .bind(clerkId)
+    // Get user from our database
+    const dbUser = await c.env.DB
+      .prepare('SELECT * FROM users WHERE id = ?')
+      .bind(user.id)
       .first();
 
-    if (!user) {
+    if (!dbUser) {
       return c.json({ error: 'User not found' }, 404);
     }
 
     return c.json({
-      id: user.id,
-      clerkId: user.clerk_id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatar_url,
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      avatarUrl: dbUser.avatar_url,
     });
   } catch (error) {
     console.error('Error fetching profile:', error);

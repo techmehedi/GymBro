@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { supabase } from '@/lib/supabase';
 
 const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8787';
 
@@ -49,14 +50,9 @@ export interface MotivationalMessage {
 
 class ApiClient {
   private baseUrl: string;
-  private authToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-  }
-
-  setAuthToken(token: string) {
-    this.authToken = token;
   }
 
   private async request<T>(
@@ -64,13 +60,17 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    
+    // Get the current session token
+    const { data: { session } } = await supabase.auth.getSession();
+    
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
-    if (this.authToken) {
-      headers.Authorization = `Bearer ${this.authToken}`;
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
     }
 
     const response = await fetch(url, {
@@ -179,11 +179,14 @@ class ApiClient {
       name: 'image.jpg',
     } as any);
 
+    // Get the current session token
+    const { data: { session } } = await supabase.auth.getSession();
+
     const response = await fetch(`${this.baseUrl}/api/upload/image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'multipart/form-data',
-        ...(this.authToken && { Authorization: `Bearer ${this.authToken}` }),
+        ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
       },
       body: formData,
     });

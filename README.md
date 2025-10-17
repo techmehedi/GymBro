@@ -6,7 +6,7 @@ A full-stack React Native mobile app built with Expo that helps small groups (2â
 
 - **Frontend**: Expo (React Native + TypeScript) with Expo Router, NativeWind, React Native Paper
 - **Backend**: Cloudflare Workers with D1 (SQLite) database, R2 storage, and KV caching
-- **Authentication**: Clerk for email/social login
+- **Authentication**: Supabase for email/social login
 - **AI Integration**: Google Gemini for motivational messages, ElevenLabs for voice clips
 - **State Management**: Zustand with React Query for server sync
 - **Notifications**: Expo Notifications for push reminders
@@ -28,7 +28,7 @@ A full-stack React Native mobile app built with Expo that helps small groups (2â
 - Node.js 18+ and npm/yarn
 - Expo CLI (`npm install -g @expo/cli`)
 - Cloudflare account with Workers, D1, R2, and KV access
-- Clerk account for authentication
+- Supabase account for authentication
 - Google Gemini API key
 - ElevenLabs API key (optional)
 
@@ -51,13 +51,15 @@ npm install
 
 #### Frontend (.env in peer-fitness/)
 ```bash
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_key_here
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 EXPO_PUBLIC_API_URL=https://your-worker.your-subdomain.workers.dev
 ```
 
 #### Backend (wrangler.toml in fitness-worker/)
 ```bash
-CLERK_SECRET_KEY=sk_test_your_clerk_secret_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 R2_BUCKET_NAME=peer-fitness-images
@@ -66,7 +68,23 @@ R2_SECRET_ACCESS_KEY=your_r2_secret_key
 R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
-### 3. Database Setup
+### 3. Supabase Setup
+
+1. **Create Supabase Project:**
+   - Go to [supabase.com](https://supabase.com) and create a new project
+   - Note your project URL and anon key from Settings > API
+
+2. **Configure Authentication:**
+   - Go to Authentication > Settings
+   - Enable email authentication
+   - Optionally enable Google OAuth (for social login)
+   - Add your app URL to Site URL
+
+3. **Get Service Role Key:**
+   - Go to Settings > API
+   - Copy the `service_role` key (keep this secret!)
+
+### 4. Database Setup
 
 ```bash
 cd fitness-worker
@@ -81,7 +99,7 @@ npx wrangler d1 migrations apply peer-fitness-db
 npx wrangler d1 execute peer-fitness-db --local --file=./schema.sql
 ```
 
-### 4. Cloudflare Services Setup
+### 5. Cloudflare Services Setup
 
 #### D1 Database
 ```bash
@@ -103,7 +121,7 @@ npx wrangler r2 bucket create peer-fitness-images
 npx wrangler kv:namespace create "KV"
 ```
 
-### 5. Run Locally
+### 6. Run Locally
 
 #### Backend (Cloudflare Worker)
 ```bash
@@ -234,9 +252,10 @@ Daily cron triggers handle:
 
 ### Common Issues
 
-1. **Clerk Authentication Errors**
-   - Verify API keys in environment variables
-   - Check Clerk dashboard for proper configuration
+1. **Supabase Authentication Errors**
+   - Verify Supabase URL and keys in environment variables
+   - Check Supabase dashboard for proper configuration
+   - Ensure service role key is used on backend, anon key on frontend
 
 2. **Database Connection Issues**
    - Ensure D1 database is created and migrated
