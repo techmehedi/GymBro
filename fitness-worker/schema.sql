@@ -2,7 +2,6 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  clerk_id TEXT UNIQUE NOT NULL,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
   avatar_url TEXT,
@@ -72,7 +71,7 @@ CREATE TABLE IF NOT EXISTS motivational_messages (
 );
 
 -- Indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members(group_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_group_id ON posts(group_id);

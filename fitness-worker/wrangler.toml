@@ -8,6 +8,10 @@ vars = { ENVIRONMENT = "production" }
 [env.staging]
 vars = { ENVIRONMENT = "staging" }
 
+# Add Supabase environment variables
+# SUPABASE_URL = "https://your-project.supabase.co"
+# SUPABASE_SERVICE_ROLE_KEY = "your_service_role_key_here"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "peer-fitness-db"

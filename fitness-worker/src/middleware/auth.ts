@@ -1,11 +1,10 @@
 import { Context, Next } from 'hono';
-import { verifyToken } from '@clerk/backend';
+import { createClient } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
-  clerkId: string;
   email: string;
-  name: string;
+  name?: string;
   avatarUrl?: string;
 }
 
@@ -18,22 +17,28 @@ export async function authMiddleware(c: Context, next: Next) {
     }
 
     const token = authHeader.substring(7);
-    const clerkSecretKey = c.env.CLERK_SECRET_KEY;
+    const supabaseUrl = c.env.SUPABASE_URL;
+    const supabaseServiceKey = c.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Verify the JWT token with Clerk
-    const payload = await verifyToken(token, {
-      secretKey: clerkSecretKey,
-    });
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return c.json({ error: 'Supabase configuration missing' }, 500);
+    }
 
-    if (!payload) {
+    // Create Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the JWT token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
       return c.json({ error: 'Invalid token' }, 401);
     }
 
     // Get or create user in our database
-    const user = await getUserOrCreate(c.env.DB, payload);
+    const dbUser = await getUserOrCreate(c.env.DB, user);
     
     // Add user to context
-    c.set('user', user);
+    c.set('user', dbUser);
     
     await next();
   } catch (error) {
@@ -42,19 +47,18 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 }
 
-async function getUserOrCreate(db: D1Database, clerkPayload: any): Promise<AuthUser> {
-  const clerkId = clerkPayload.sub;
+async function getUserOrCreate(db: D1Database, supabaseUser: any): Promise<AuthUser> {
+  const userId = supabaseUser.id;
   
   // Try to get existing user
   const existingUser = await db
-    .prepare('SELECT * FROM users WHERE clerk_id = ?')
-    .bind(clerkId)
+    .prepare('SELECT * FROM users WHERE id = ?')
+    .bind(userId)
     .first();
 
   if (existingUser) {
     return {
       id: existingUser.id,
-      clerkId: existingUser.clerk_id,
       email: existingUser.email,
       name: existingUser.name,
       avatarUrl: existingUser.avatar_url,
@@ -62,22 +66,20 @@ async function getUserOrCreate(db: D1Database, clerkPayload: any): Promise<AuthU
   }
 
   // Create new user
-  const userId = crypto.randomUUID();
-  const email = clerkPayload.email || '';
-  const name = clerkPayload.name || clerkPayload.email || 'User';
-  const avatarUrl = clerkPayload.picture || null;
+  const email = supabaseUser.email || '';
+  const name = supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User';
+  const avatarUrl = supabaseUser.user_metadata?.avatar_url || null;
 
   await db
     .prepare(`
-      INSERT INTO users (id, clerk_id, email, name, avatar_url)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO users (id, email, name, avatar_url)
+      VALUES (?, ?, ?, ?)
     `)
-    .bind(userId, clerkId, email, name, avatarUrl)
+    .bind(userId, email, name, avatarUrl)
     .run();
 
   return {
     id: userId,
-    clerkId,
     email,
     name,
     avatarUrl,
