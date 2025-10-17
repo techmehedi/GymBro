@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -6,24 +5,25 @@ import { Card, Button } from 'react-native-paper';
 
 import { useFitnessStore } from '@/store/fitnessStore';
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StreaksScreen() {
-  const { isSignedIn } = useAuth();
+  const { user } = useAuth();
   const { groups, selectedGroup, setSelectedGroup } = useFitnessStore();
 
   const { data: streaks, isLoading } = useQuery({
     queryKey: ['streaks', selectedGroup?.id],
     queryFn: () => api.getGroupStreaks(selectedGroup?.id!),
-    enabled: !!selectedGroup && isSignedIn,
+    enabled: !!selectedGroup && !!user,
   });
 
   const { data: myStreak } = useQuery({
     queryKey: ['my-streak', selectedGroup?.id],
     queryFn: () => api.getMyStreak(selectedGroup?.id!),
-    enabled: !!selectedGroup && isSignedIn,
+    enabled: !!selectedGroup && !!user,
   });
 
-  if (!isSignedIn) {
+  if (!user) {
     return (
       <View className="flex-1 items-center justify-center p-6">
         <Text className="text-xl font-bold text-center mb-4">
