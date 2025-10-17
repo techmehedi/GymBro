@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
@@ -6,30 +5,31 @@ import { ScrollView, Text, View, Image } from 'react-native';
 import { Card, Button, FAB } from 'react-native-paper';
 
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function GroupDetailScreen() {
-  const { isSignedIn } = useAuth();
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: groupData, isLoading } = useQuery({
     queryKey: ['group-details', id],
     queryFn: () => api.getGroupDetails(id!),
-    enabled: !!id && isSignedIn,
+    enabled: !!id && !!user,
   });
 
   const { data: posts } = useQuery({
     queryKey: ['group-posts', id],
     queryFn: () => api.getGroupPosts(id!),
-    enabled: !!id && isSignedIn,
+    enabled: !!id && !!user,
   });
 
   const { data: motivationalMessages } = useQuery({
     queryKey: ['motivational-messages', id],
     queryFn: () => api.getMotivationalMessages(id!),
-    enabled: !!id && isSignedIn,
+    enabled: !!id && !!user,
   });
 
-  if (!isSignedIn) {
+  if (!user) {
     return (
       <View className="flex-1 items-center justify-center p-6">
         <Text className="text-xl font-bold text-center mb-4">

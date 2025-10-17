@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -8,9 +7,10 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useFitnessStore } from '@/store/fitnessStore';
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CheckInScreen() {
-  const { isSignedIn } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { groups, selectedGroup, setSelectedGroup } = useFitnessStore();
   const [content, setContent] = useState('');
@@ -20,7 +20,7 @@ export default function CheckInScreen() {
   const { data: todayPost, isLoading: postLoading } = useQuery({
     queryKey: ['today-post', selectedGroup?.id],
     queryFn: () => api.getTodayPost(selectedGroup?.id!),
-    enabled: !!selectedGroup && isSignedIn,
+    enabled: !!selectedGroup && !!user,
   });
 
   const pickImage = async () => {
@@ -80,13 +80,13 @@ export default function CheckInScreen() {
     }
   };
 
-  if (!isSignedIn) {
+  if (!user) {
     return (
       <View className="flex-1 items-center justify-center p-6">
         <Text className="text-xl font-bold text-center mb-4">
           Please sign in to check in
         </Text>
-        <Button mode="contained" onPress={() => router.push('/sign-in')}>
+        <Button mode="contained" onPress={() => router.push('/auth/sign-in')}>
           Sign In
         </Button>
       </View>

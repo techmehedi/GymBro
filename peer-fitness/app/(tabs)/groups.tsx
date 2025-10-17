@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
@@ -7,9 +6,10 @@ import { Card, Button, TextInput, Modal, Portal } from 'react-native-paper';
 
 import { useFitnessStore } from '@/store/fitnessStore';
 import { api } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function GroupsScreen() {
-  const { isSignedIn } = useAuth();
+  const { user } = useAuth();
   const { groups, fetchGroups, createGroup, joinGroup } = useFitnessStore();
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [joinModalVisible, setJoinModalVisible] = useState(false);
@@ -18,10 +18,10 @@ export default function GroupsScreen() {
   const [inviteCode, setInviteCode] = useState('');
 
   React.useEffect(() => {
-    if (isSignedIn) {
+    if (user) {
       fetchGroups();
     }
-  }, [isSignedIn, fetchGroups]);
+  }, [user, fetchGroups]);
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
@@ -56,13 +56,13 @@ export default function GroupsScreen() {
     }
   };
 
-  if (!isSignedIn) {
+  if (!user) {
     return (
       <View className="flex-1 items-center justify-center p-6">
         <Text className="text-xl font-bold text-center mb-4">
           Please sign in to manage groups
         </Text>
-        <Link href="/sign-in" asChild>
+        <Link href="/auth/sign-in" asChild>
           <Button mode="contained">Sign In</Button>
         </Link>
       </View>
