@@ -163,6 +163,10 @@ export class ApiClient {
     return this.request(`/groups/${groupId}/leave`, { method: 'DELETE' });
   }
 
+  async deleteGroup(groupId: string) {
+    return this.request(`/groups/${groupId}`, { method: 'DELETE' });
+  }
+
   // Post endpoints
   async createPost(data: {
     group_id: string;
@@ -231,10 +235,10 @@ export class ApiClient {
     });
   }
 
-  async completeUpload(uploadId: string, fileName: string, parts: any[]) {
+  async completeUpload(fileName: string) {
     return this.request('/upload/complete', {
       method: 'POST',
-      body: JSON.stringify({ uploadId, fileName, parts }),
+      body: JSON.stringify({ fileName }),
     });
   }
 
@@ -244,6 +248,39 @@ export class ApiClient {
 
   async deleteImage(fileName: string) {
     return this.request(`/upload/${fileName}`, { method: 'DELETE' });
+  }
+
+  // Direct upload (multipart) fallback (React Native friendly)
+  // Accepts either a Blob or a React Native file object with uri/name/type
+  async directUpload(file: any, fileName: string, mimeType = 'image/jpeg') {
+    const form = new FormData();
+
+    // If a file object with uri is provided (React Native style)
+    if (file && typeof file === 'object' && 'uri' in file) {
+      form.append('file', { uri: (file as any).uri, name: fileName, type: mimeType } as any);
+    } else {
+      // Fallback: assume it's a Blob
+      form.append('file', file as any);
+    }
+    form.append('fileName', fileName);
+
+    const headers: HeadersInit = {};
+    if (this.token) {
+      (headers as any).Authorization = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}/upload/direct`, {
+      method: 'POST',
+      headers, // let fetch set multipart boundary
+      body: form as any,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Network error' }));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
   }
 
   // User search and follow endpoints
