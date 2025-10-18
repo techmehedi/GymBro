@@ -121,3 +121,15 @@ Thumbs.db
 
 .env
 wrangler.toml
+backend/.env
+backend/wrangler.toml
+frontend/.env
+frontend/env.example
+backend/.env.example
+frontend/.env.example
+
+# Cloudflare
+.wrangler/
+wrangler.toml.bak
+wrangler.toml
+
