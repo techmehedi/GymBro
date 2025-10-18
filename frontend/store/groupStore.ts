@@ -54,6 +54,23 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
+  deleteGroup: async (groupId: string) => {
+    set({ isLoading: true });
+    try {
+      const response = await apiClient.deleteGroup(groupId);
+      console.log('Delete group response:', response);
+      set(state => ({
+        groups: state.groups.filter(g => g.id !== groupId),
+        currentGroup: state.currentGroup?.id === groupId ? null : state.currentGroup,
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error('Delete group error:', error);
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
   fetchGroups: async () => {
     set({ isLoading: true });
     try {
