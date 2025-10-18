@@ -105,6 +105,10 @@ jspm_packages/
 # Cloudflare
 .wrangler/
 wrangler.toml.bak
+wrangler.toml
+# Backend environment files
+backend/.env*
+backend/wrangler.toml
 
 # IDE
 .vscode/
@@ -114,3 +118,18 @@ wrangler.toml.bak
 
 # OS
 Thumbs.db
+
+.env
+wrangler.toml
+backend/.env
+backend/wrangler.toml
+frontend/.env
+frontend/env.example
+backend/.env.example
+frontend/.env.example
+
+# Cloudflare
+.wrangler/
+wrangler.toml.bak
+wrangler.toml
+

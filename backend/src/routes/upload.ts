@@ -46,17 +46,18 @@ app.post('/url', async (c) => {
     const fileExtension = fileName.split('.').pop() || 'jpg';
     const uniqueFileName = `workout-photos/${user.id}/${timestamp}-${randomId}.${fileExtension}`;
     
-    // Create R2 upload URL
-    const uploadUrl = await c.env?.IMAGES.createMultipartUpload(uniqueFileName, {
+    // Create presigned URL for direct upload to R2
+    const uploadUrl = await (c.env?.IMAGES as any).createPresignedUrl('PUT', uniqueFileName, {
       httpMetadata: {
         contentType: contentType || 'image/jpeg',
       },
     });
     
     return c.json({
-      uploadUrl: uploadUrl.uploadId,
+      uploadUrl: uploadUrl.url,
       fileName: uniqueFileName,
-      key: uniqueFileName
+      key: uniqueFileName,
+      expires: uploadUrl.expires
     });
   } catch (error) {
     console.error('Error creating upload URL:', error);
@@ -64,20 +65,17 @@ app.post('/url', async (c) => {
   }
 });
 
-// Complete multipart upload
+// Complete upload (for direct uploads)
 app.post('/complete', async (c) => {
   const authResult = await verifyAuth(c);
   if ('error' in authResult) return authResult;
   
-  const { uploadId, fileName, parts } = await c.req.json();
+  const { fileName } = await c.req.json();
   
   try {
-    // Complete the multipart upload
-    // TODO: Fix R2 multipart upload API - method may have changed
-    // const result = await c.env?.IMAGES.completeMultipartUpload(fileName, uploadId, parts);
-    
-    // Generate public URL
-    const publicUrl = `https://your-r2-domain.com/${fileName}`;
+    // For direct uploads, we just need to verify the file exists
+    // and return the public URL
+    const publicUrl = `https://peer-fitness-images.gymbro.workers.dev/${fileName}`;
     
     return c.json({
       success: true,
@@ -132,7 +130,7 @@ app.get('/user', async (c) => {
     
     const images = objects.objects.map(obj => ({
       fileName: obj.key,
-      url: `https://your-r2-domain.com/${obj.key}`,
+      url: `https://peer-fitness-images.gymbro.workers.dev/${obj.key}`,
       size: obj.size,
       uploaded: obj.uploaded
     }));

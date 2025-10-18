@@ -15,6 +15,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         groups: [group, ...state.groups],
         isLoading: false
       }));
+      return { group };
     } catch (error) {
       console.error('Create group error:', error);
       set({ isLoading: false });
