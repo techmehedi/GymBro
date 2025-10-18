@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "GymBro",
+    "slug": "gymbro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gymbro.app"
+    },
+    "android": {
+      "package": "com.gymbro.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "gymbro",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
