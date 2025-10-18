@@ -85,17 +85,20 @@ app.get('/', async (c) => {
   
   try {
     const groups = await c.env?.DB.prepare(`
-      SELECT g.*, gm.is_admin, gm.joined_at,
-             COUNT(gm2.user_id) as member_count
+      SELECT 
+        g.id, g.name, g.description, g.invite_code, g.max_members,
+        g.created_by, g.created_at, g.updated_at,
+        gm.is_admin, gm.joined_at,
+        (
+          SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id = g.id
+        ) AS member_count
       FROM groups g
       JOIN group_members gm ON g.id = gm.group_id
-      LEFT JOIN group_members gm2 ON g.id = gm2.group_id
       WHERE gm.user_id = ?
-      GROUP BY g.id
       ORDER BY gm.joined_at DESC
     `).bind(user.id).all();
     
-    return c.json({ groups: groups.results });
+    return c.json({ groups: groups?.results || [] });
   } catch (error) {
     console.error('Error fetching groups:', error);
     return c.json({ error: 'Failed to fetch groups' }, 500);
@@ -247,6 +250,206 @@ app.delete('/:id/leave', async (c) => {
   } catch (error) {
     console.error('Error leaving group:', error);
     return c.json({ error: 'Failed to leave group' }, 500);
+  }
+});
+
+// Invite users to group
+app.post('/:id/invite', async (c) => {
+  const authResult = await verifyAuth(c);
+  if ('error' in authResult) return authResult;
+  
+  const { user } = authResult;
+  const groupId = c.req.param('id');
+  const { user_ids } = await c.req.json();
+  
+  if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+    return c.json({ error: 'Invalid user IDs' }, 400);
+  }
+  
+  try {
+    // Check if user is admin of group
+    const membership = await c.env?.DB.prepare(`
+      SELECT is_admin FROM group_members 
+      WHERE group_id = ? AND user_id = ?
+    `).bind(groupId, user.id).first();
+    
+    if (!membership || !membership.is_admin) {
+      return c.json({ error: 'Only group admins can invite users' }, 403);
+    }
+    
+    // Check if group exists and get max members
+    const group = await c.env?.DB.prepare(`
+      SELECT max_members FROM groups WHERE id = ?
+    `).bind(groupId).first();
+    
+    if (!group) {
+      return c.json({ error: 'Group not found' }, 404);
+    }
+    
+    // Check current member count
+    const memberCount = await c.env?.DB.prepare(`
+      SELECT COUNT(*) as count FROM group_members WHERE group_id = ?
+    `).bind(groupId).first();
+    
+    if (!memberCount || (memberCount.count as number) + user_ids.length > (group.max_members as number)) {
+      return c.json({ error: 'Group would exceed maximum member limit' }, 400);
+    }
+    
+    const results = [];
+    
+    for (const userId of user_ids) {
+      // Check if user exists
+      const targetUser = await c.env?.DB.prepare(`
+        SELECT id FROM users WHERE id = ?
+      `).bind(userId).first();
+      
+      if (!targetUser) {
+        results.push({ user_id: userId, status: 'error', message: 'User not found' });
+        continue;
+      }
+      
+      // Check if user is already a member
+      const existingMember = await c.env?.DB.prepare(`
+        SELECT id FROM group_members WHERE group_id = ? AND user_id = ?
+      `).bind(groupId, userId).first();
+      
+      if (existingMember) {
+        results.push({ user_id: userId, status: 'error', message: 'User is already a member' });
+        continue;
+      }
+      
+      // Check if invitation already exists
+      const existingInvitation = await c.env?.DB.prepare(`
+        SELECT id FROM group_invitations 
+        WHERE group_id = ? AND invitee_id = ? AND status = 'pending'
+      `).bind(groupId, userId).first();
+      
+      if (existingInvitation) {
+        results.push({ user_id: userId, status: 'error', message: 'Invitation already sent' });
+        continue;
+      }
+      
+      // Create invitation
+      await c.env?.DB.prepare(`
+        INSERT INTO group_invitations (group_id, inviter_id, invitee_id)
+        VALUES (?, ?, ?)
+      `).bind(groupId, user.id, userId).run();
+      
+      results.push({ user_id: userId, status: 'success', message: 'Invitation sent' });
+    }
+    
+    return c.json({ results });
+  } catch (error) {
+    console.error('Error inviting users:', error);
+    return c.json({ error: 'Failed to invite users' }, 500);
+  }
+});
+
+// Get group invitations for user
+app.get('/invitations', async (c) => {
+  const authResult = await verifyAuth(c);
+  if ('error' in authResult) return authResult;
+  
+  const { user } = authResult;
+  
+  try {
+    const invitations = await c.env?.DB.prepare(`
+      SELECT gi.*, g.name as group_name, g.description as group_description,
+             u.display_name as inviter_name, u.avatar_url as inviter_avatar
+      FROM group_invitations gi
+      JOIN groups g ON gi.group_id = g.id
+      JOIN users u ON gi.inviter_id = u.id
+      WHERE gi.invitee_id = ? AND gi.status = 'pending'
+      ORDER BY gi.created_at DESC
+    `).bind(user.id).all();
+    
+    return c.json({ invitations: invitations.results });
+  } catch (error) {
+    console.error('Error fetching invitations:', error);
+    return c.json({ error: 'Failed to fetch invitations' }, 500);
+  }
+});
+
+// Accept group invitation
+app.post('/invitations/:id/accept', async (c) => {
+  const authResult = await verifyAuth(c);
+  if ('error' in authResult) return authResult;
+  
+  const { user } = authResult;
+  const invitationId = c.req.param('id');
+  
+  try {
+    // Get invitation details
+    const invitation = await c.env?.DB.prepare(`
+      SELECT gi.*, g.max_members
+      FROM group_invitations gi
+      JOIN groups g ON gi.group_id = g.id
+      WHERE gi.id = ? AND gi.invitee_id = ? AND gi.status = 'pending'
+    `).bind(invitationId, user.id).first();
+    
+    if (!invitation) {
+      return c.json({ error: 'Invitation not found or already processed' }, 404);
+    }
+    
+    // Check if group is full
+    const memberCount = await c.env?.DB.prepare(`
+      SELECT COUNT(*) as count FROM group_members WHERE group_id = ?
+    `).bind(invitation.group_id).first();
+    
+    if (!memberCount || (memberCount.count as number) >= (invitation.max_members as number)) {
+      return c.json({ error: 'Group is full' }, 400);
+    }
+    
+    // Add user to group
+    await c.env?.DB.prepare(`
+      INSERT INTO group_members (group_id, user_id)
+      VALUES (?, ?)
+    `).bind(invitation.group_id, user.id).run();
+    
+    // Initialize streak for new member
+    await c.env?.DB.prepare(`
+      INSERT INTO streaks (user_id, group_id)
+      VALUES (?, ?)
+    `).bind(user.id, invitation.group_id).run();
+    
+    // Update invitation status
+    await c.env?.DB.prepare(`
+      UPDATE group_invitations 
+      SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(invitationId).run();
+    
+    return c.json({ message: 'Successfully joined group' });
+  } catch (error) {
+    console.error('Error accepting invitation:', error);
+    return c.json({ error: 'Failed to accept invitation' }, 500);
+  }
+});
+
+// Decline group invitation
+app.post('/invitations/:id/decline', async (c) => {
+  const authResult = await verifyAuth(c);
+  if ('error' in authResult) return authResult;
+  
+  const { user } = authResult;
+  const invitationId = c.req.param('id');
+  
+  try {
+    // Update invitation status
+    const result = await c.env?.DB.prepare(`
+      UPDATE group_invitations 
+      SET status = 'declined', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND invitee_id = ? AND status = 'pending'
+    `).bind(invitationId, user.id).run();
+    
+    if (result.changes === 0) {
+      return c.json({ error: 'Invitation not found or already processed' }, 404);
+    }
+    
+    return c.json({ message: 'Invitation declined' });
+  } catch (error) {
+    console.error('Error declining invitation:', error);
+    return c.json({ error: 'Failed to decline invitation' }, 500);
   }
 });
 
