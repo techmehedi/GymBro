@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 const { width } = Dimensions.get('window');
 
 export default function GroupsScreen() {
-  const { groups, fetchGroups, isLoading, createGroup, joinGroup } = useGroupStore();
+  const { groups, fetchGroups, isLoading, createGroup, joinGroup, deleteGroup } = useGroupStore();
   const { user } = useAuthStore();
   const router = useRouter();
   
@@ -172,6 +172,30 @@ export default function GroupsScreen() {
     }
   };
 
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    Alert.alert(
+      'Delete Group',
+      `Are you sure you want to delete "${groupName}"? This action cannot be undone and will remove all group data including posts, streaks, and member information.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              await deleteGroup(groupId);
+              Alert.alert('Success', 'Group deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete group:', error);
+              Alert.alert('Error', 'Failed to delete group. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Component used by FlatList items (hooks are allowed here)
   const GroupItem = ({ item }: { item: Group }) => {
     const cardAnim = useSharedValue(0);
@@ -187,6 +211,9 @@ export default function GroupsScreen() {
         { scale: interpolate(cardAnim.value, [0, 1], [0.9, 1]) }
       ],
     }));
+
+    // Check if user is admin (creator) of the group
+    const isAdmin = item.created_by === user?.id;
 
     return (
       <Animated.View style={[styles.groupCardContainer, cardStyle]}>
@@ -205,6 +232,15 @@ export default function GroupsScreen() {
                   {item.description || 'No description'}
                 </Text>
               </View>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteGroup(item.id, item.name)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#FF6464" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.groupStats}>
@@ -657,6 +693,13 @@ const styles = StyleSheet.create({
   groupDescription: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 100, 100, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 100, 100, 0.3)',
   },
   groupStats: {
     flexDirection: 'row',
