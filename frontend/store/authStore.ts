@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { router } from 'expo-router';
 import { supabase, apiClient } from '../lib/supabase';
 import type { User, AuthState } from '../types';
 
@@ -22,7 +23,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         apiClient.setToken(data.session?.access_token || '');
         
         set({ 
-          user: data.user, 
+          user: data.user as any, 
           isAuthenticated: true, 
           isLoading: false 
         });
@@ -56,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signUp: async (email: string, password: string, displayName: string) => {
+  signUp: async (email: string, password: string, displayName: string): Promise<void> => {
     set({ isLoading: true });
     try {
       console.log('Attempting to sign up user:', { email, displayName });
@@ -81,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         
         // Set user as authenticated first
         set({ 
-          user: data.user, 
+          user: data.user as any, 
           isAuthenticated: true, 
           isLoading: false 
         });
@@ -92,9 +93,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const linkResult = await apiClient.linkUserWithFallback();
             if (linkResult) {
               console.log('User linked to backend successfully');
-              // Update user with backend profile if available
-              const { user } = linkResult;
-              set({ user });
+            // Update user with backend profile if available
+            const { user } = linkResult as any;
+            set({ user: user });
             } else {
               console.log('Backend unavailable, user will be linked when backend is available');
             }
@@ -103,10 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         }, 1000); // Wait 1 second before trying to link
         
-        return { 
-          success: true, 
-          message: 'Account created and signed in successfully!'
-        };
+        // Return void as expected by the interface
       } else {
         throw new Error('Failed to create user account');
       }
@@ -115,13 +113,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       
       // Handle specific Supabase errors
-      if (error.message?.includes('User already registered')) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('User already registered')) {
         throw new Error('An account with this email already exists. Please try signing in instead.');
-      } else if (error.message?.includes('Database error')) {
+      } else if (errorMessage.includes('Database error')) {
         throw new Error('There was a problem creating your account. Please try again.');
-      } else if (error.message?.includes('Invalid email')) {
+      } else if (errorMessage.includes('Invalid email')) {
         throw new Error('Please enter a valid email address.');
-      } else if (error.message?.includes('Password should be at least')) {
+      } else if (errorMessage.includes('Password should be at least')) {
         throw new Error('Password must be at least 6 characters long.');
       }
       
@@ -132,29 +131,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      apiClient.clearToken();
-      set({ 
-        user: null, 
-        isAuthenticated: false, 
-        isLoading: false 
-      });
-    } catch (error) {
-      console.error('Sign out error:', error);
-      set({ isLoading: false });
-      throw error;
+      await supabase.auth.signOut();
+    } catch (e) {
+      // continue regardless
     }
+
+    try {
+      apiClient.clearToken();
+    } catch {}
+
+    // Hard reset auth state
+    set({ user: null, isAuthenticated: false, isLoading: false });
+    // Force navigation back to auth entry
+    try {
+      router.replace('/auth/sign-in');
+    } catch {}
   },
 
   linkUser: async () => {
     try {
       const response = await apiClient.linkUser();
-      const { user } = response;
+      const { user } = response as any;
       set({ user, isAuthenticated: true });
     } catch (error) {
       console.error('Link user error:', error);
+      throw error;
+    }
+  },
+
+  updateUserProfile: async (data: { display_name?: string; avatar_url?: string }) => {
+    set({ isLoading: true });
+    try {
+      const response = await apiClient.updateUserProfile(data);
+      const { user } = response as any;
+      set({ user, isLoading: false });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      set({ isLoading: false });
       throw error;
     }
   },
