@@ -136,6 +136,7 @@ export interface GroupState {
   createGroup: (data: CreateGroupRequest) => Promise<{ group: Group }>;
   joinGroup: (inviteCode: string) => Promise<void>;
   leaveGroup: (groupId: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
   fetchGroups: () => Promise<void>;
   setCurrentGroup: (group: Group | null) => void;
 }
