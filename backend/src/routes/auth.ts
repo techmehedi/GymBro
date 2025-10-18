@@ -21,12 +21,16 @@ async function verifyAuth(c: any) {
     });
     
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Supabase auth error:', errorData);
       return c.json({ error: 'Invalid token' }, 401);
     }
     
-    const user = await response.json();
-    return { user, token };
+    const userData = await response.json();
+    console.log('Supabase user data:', userData);
+    return { user: userData, token };
   } catch (error) {
+    console.error('Token verification error:', error);
     return c.json({ error: 'Token verification failed' }, 401);
   }
 }
@@ -37,6 +41,11 @@ app.post('/link', async (c) => {
   if ('error' in authResult) return authResult;
   
   const { user } = authResult;
+  
+  if (!user || !user.id) {
+    console.error('Invalid user object:', user);
+    return c.json({ error: 'Invalid user data' }, 400);
+  }
   
   try {
     // Check if user already exists
@@ -63,7 +72,7 @@ app.post('/link', async (c) => {
     return c.json({ user: newUser });
   } catch (error) {
     console.error('Error linking user:', error);
-    return c.json({ error: 'Failed to link user' }, 500);
+    return c.json({ error: `Failed to link user: ${error.message || 'Unknown error'}` }, 500);
   }
 });
 
