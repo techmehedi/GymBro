@@ -29,9 +29,33 @@ export default function SignUpScreen() {
     }
 
     try {
-      await signUp(email.trim(), password, displayName.trim());
+      const result = await signUp(email.trim(), password, displayName.trim());
+      if (result?.success) {
+        Alert.alert(
+          'Success!', 
+          result.message || 'Account created and signed in successfully!',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
-      Alert.alert('Sign Up Failed', error instanceof Error ? error.message : 'An error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      
+      // If user already exists, offer to sign in instead
+      if (errorMessage.includes('already exists')) {
+        Alert.alert(
+          'Account Exists', 
+          errorMessage,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign In Instead', onPress: () => {
+              // Navigate to sign in screen
+              // You can add navigation here if needed
+            }}
+          ]
+        );
+      } else {
+        Alert.alert('Sign Up Failed', errorMessage);
+      }
     }
   };
 
