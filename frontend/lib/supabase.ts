@@ -49,7 +49,7 @@ export class ApiClient {
     };
 
     if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`;
+      (headers as any).Authorization = `Bearer ${this.token}`;
     }
 
     // Create an AbortController for timeout
@@ -73,7 +73,7 @@ export class ApiClient {
       return response.json();
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if ((error as any).name === 'AbortError') {
         throw new Error('Request timed out. Please check your connection and try again.');
       }
       throw error;
@@ -244,6 +244,46 @@ export class ApiClient {
 
   async deleteImage(fileName: string) {
     return this.request(`/upload/${fileName}`, { method: 'DELETE' });
+  }
+
+  // User search and follow endpoints
+  async searchUsers(query: string): Promise<{ users: any[] }> {
+    return this.request(`/auth/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async followUser(targetUserId: string) {
+    return this.request('/auth/follow', {
+      method: 'POST',
+      body: JSON.stringify({ target_user_id: targetUserId }),
+    });
+  }
+
+  async unfollowUser(targetUserId: string) {
+    return this.request(`/auth/follow/${targetUserId}`, { method: 'DELETE' });
+  }
+
+  async getFollows(type: 'followers' | 'following' = 'followers'): Promise<{ users: any[] }> {
+    return this.request(`/auth/follows?type=${type}`);
+  }
+
+  // Group invitation endpoints
+  async inviteUsersToGroup(groupId: string, userIds: string[]) {
+    return this.request(`/groups/${groupId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ user_ids: userIds }),
+    });
+  }
+
+  async getGroupInvitations(): Promise<{ invitations: any[] }> {
+    return this.request('/groups/invitations');
+  }
+
+  async acceptGroupInvitation(invitationId: string) {
+    return this.request(`/groups/invitations/${invitationId}/accept`, { method: 'POST' });
+  }
+
+  async declineGroupInvitation(invitationId: string) {
+    return this.request(`/groups/invitations/${invitationId}/decline`, { method: 'POST' });
   }
 }
 
