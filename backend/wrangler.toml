@@ -12,8 +12,8 @@ vars = { ENVIRONMENT = "staging" }
 # D1 Database
 [[d1_databases]]
 binding = "DB"
-database_name = "peer-fitness-db"
-database_id = "1b34548a-acc0-45c4-b773-f40ff651ac78"
+database_name = "gymbro-db"
+database_id = "35f8f5ce-0644-4a3f-a3e9-e8693f649df8"
 
 [[kv_namespaces]]
 binding = "KV"
@@ -32,4 +32,4 @@ ENVIRONMENT = "development"
 JWT_SECRET = "C1fhLUZA4dHYjJp6Vh0bksLBThJoRPpwUGkTj/D3kcyBZGJ9uWWfOIDDMuUWB/Ps0K9wcETzojFCKLJ/eSEZ3Q=="
 GEMINI_API_KEY = "AIzaSyCua3FUDnURI3OH1wSlrNMqbX-wtnWSYHY"
 SUPABASE_URL="https://koudzeojjkteioowweel.supabase.co/"
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdWR6ZW9qamt0ZWlvb3d3ZWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTEyODUsImV4cCI6MjA3NjI4NzI4NX0.yHHgFWIYy2RNDMd5VHSuOiHZYgrG3fmTXQr9crYRS-Q"
+SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdWR6ZW9qamt0ZWlvb3d3ZWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTEyODUsImV4cCI6MjA3NjI4NzI4NX0.yHHgFWIYy2RNDMd5VHSuOiHZYgrG3fmTXQr9crYRS-Q"
