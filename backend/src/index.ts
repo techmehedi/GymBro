@@ -17,7 +17,7 @@ const app = new Hono<{ Bindings: Env }>();
 // Middleware
 app.use('*', logger());
 app.use('*', cors({
-  origin: ['http://localhost:8081', 'exp://localhost:8081', 'http://localhost:19000', 'http://localhost:19001', 'http://localhost:19002'], // Expo dev server ports
+  origin: ['http://localhost:8081', 'exp://localhost:8081', 'http://localhost:19000', 'http://localhost:19001', 'http://localhost:19002', 'http://192.168.20.19:8081', 'exp://192.168.20.19:8081', 'exp://192.168.20.19:19000', 'exp://192.168.20.19:19001', 'exp://192.168.20.19:19002'], // Expo dev server ports
   credentials: true,
 }));
 
