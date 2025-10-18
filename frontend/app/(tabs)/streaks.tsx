@@ -88,18 +88,14 @@ export default function StreaksScreen() {
     return 'Getting started! 🌱';
   };
 
-  const renderStreak = ({ item, index }: { item: any; index: number }) => {
+  // Item component so hooks are used in a component body
+  const StreakItem = ({ item, index }: { item: any; index: number }) => {
     const cardAnim = useSharedValue(0);
     const flameScale = useSharedValue(1);
-    
+
     React.useEffect(() => {
-      cardAnim.value = withTiming(1, { 
-        duration: 600,
-        delay: index * 150 
-      });
-      
-      // Flame animation for high streaks
-        if (item.current_streak >= 7) {
+      cardAnim.value = withTiming(1, { duration: 600 });
+      if (item.current_streak >= 7) {
         flameScale.value = withRepeat(
           withSequence(
             withTiming(1.2, { duration: 800 }),
@@ -119,7 +115,7 @@ export default function StreaksScreen() {
       ],
     }));
 
-    const flameStyle = useAnimatedStyle(() => ({
+    const flameStyleLocal = useAnimatedStyle(() => ({
       transform: [{ scale: flameScale.value }],
     }));
 
@@ -132,10 +128,9 @@ export default function StreaksScreen() {
       <Animated.View style={[styles.streakCardContainer, cardStyle]}>
         <BlurView intensity={20} tint="dark" style={styles.streakCard}>
           <LinearGradient
-            colors={isTopThree ? streakColors : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+            colors={isTopThree ? streakColors as any : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
             style={styles.streakCardGradient}
           >
-            {/* Rank Badge */}
             {isTopThree && (
               <View style={styles.rankBadge}>
                 <Text style={styles.rankNumber}>{index + 1}</Text>
@@ -154,8 +149,8 @@ export default function StreaksScreen() {
                   <Text style={styles.streakMessage}>{streakMessage}</Text>
                 </View>
               </View>
-              
-              <Animated.View style={[styles.streakIconContainer, flameStyle]}>
+
+              <Animated.View style={[styles.streakIconContainer, flameStyleLocal]}>
                 <Ionicons 
                   name={streakIcon as any} 
                   size={32} 
@@ -186,7 +181,6 @@ export default function StreaksScreen() {
               </View>
             </View>
 
-            {/* Progress Bar */}
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
                 <Animated.View 
@@ -207,6 +201,10 @@ export default function StreaksScreen() {
         </BlurView>
       </Animated.View>
     );
+  };
+
+  const renderStreak = ({ item, index }: { item: any; index: number }) => {
+    return <StreakItem item={item} index={index} />;
   };
 
   const containerStyle = useAnimatedStyle(() => ({
