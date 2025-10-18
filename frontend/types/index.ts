@@ -126,13 +126,14 @@ export interface AuthState {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   linkUser: () => Promise<void>;
+  updateUserProfile: (data: { display_name?: string; avatar_url?: string }) => Promise<void>;
 }
 
 export interface GroupState {
   groups: Group[];
   currentGroup: Group | null;
   isLoading: boolean;
-  createGroup: (data: CreateGroupRequest) => Promise<void>;
+  createGroup: (data: CreateGroupRequest) => Promise<{ group: Group }>;
   joinGroup: (inviteCode: string) => Promise<void>;
   leaveGroup: (groupId: string) => Promise<void>;
   fetchGroups: () => Promise<void>;
