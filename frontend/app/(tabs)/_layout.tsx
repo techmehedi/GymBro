@@ -5,7 +5,7 @@ export default function TabLayout() {
   return (
     <>
       <StatusBar style="auto" />
-      <Slot />
+      <Slot/>
     </>
   );
 }

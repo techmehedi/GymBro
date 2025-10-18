@@ -4,11 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, Paragraph, Chip } from 'react-native-paper';
 import { useStreakStore } from '../../store/streakStore';
 import { useGroupStore } from '../../store/groupStore';
+import { Button } from 'react-native-paper';
+import { useRouter } from 'expo-router';
+import Header from '../../components/Header';
 
 export default function StreaksScreen() {
   const { streaks, fetchStreaks, isLoading } = useStreakStore();
   const { groups } = useGroupStore();
-
+  const router = useRouter();
   React.useEffect(() => {
     if (groups.length > 0) {
       fetchStreaks(groups[0].id); // Fetch streaks for first group
@@ -42,6 +45,7 @@ export default function StreaksScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Header title="Streak Leaderboard" />
       <View style={styles.header}>
         <Title>Streak Leaderboard</Title>
         <Paragraph>Keep the momentum going!</Paragraph>
