@@ -1,0 +1,34 @@
+name = "peer-fitness-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.staging]
+vars = { ENVIRONMENT = "staging" }
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "gymbro-db"
+database_id = "YOUR_DATABASE_ID_HERE"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID_HERE"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "peer-fitness-images"
+
+[[triggers]]
+crons = ["0 9 * * *"]  # Daily at 9 AM UTC for streak resets and notifications
+
+[vars]
+# Environment variables - Copy this file to wrangler.toml and fill in real values
+ENVIRONMENT = "development"
+GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
+SUPABASE_URL = "YOUR_SUPABASE_URL_HERE"
+SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE"

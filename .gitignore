@@ -106,6 +106,9 @@ jspm_packages/
 .wrangler/
 wrangler.toml.bak
 wrangler.toml
+# Backend environment files
+backend/.env*
+backend/wrangler.toml
 
 # IDE
 .vscode/
