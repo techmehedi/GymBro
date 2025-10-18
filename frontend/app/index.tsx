@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {useRouter} from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+
 
 export default function LandingPage() {
   const router = useRouter();
