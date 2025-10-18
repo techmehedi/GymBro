@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, TextInput, ScrollView, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, TextInput, ScrollView, Dimensions, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,14 +16,26 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/authStore';
+import { useGroupStore } from '../../store/groupStore';
+import { apiClient } from '../../lib/supabase';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const { user, signOut, updateUserProfile } = useAuthStore();
+  const { groups } = useGroupStore();
   const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedAvatarUri, setSelectedAvatarUri] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [stats, setStats] = useState({
+    groups: 0,
+    streak: 0,
+    checkins: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Animation values
   const fadeAnim = useSharedValue(0);
@@ -47,7 +59,48 @@ export default function ProfileScreen() {
       -1,
       false
     );
+
+    // Fetch user stats
+    fetchUserStats();
   }, []);
+
+  const fetchUserStats = async () => {
+    if (!user) return;
+    
+    setIsLoadingStats(true);
+    try {
+      // Get groups count
+      const groupsCount = groups.length;
+      
+      // Get user's posts (check-ins)
+      const { posts } = await apiClient.getUserPosts(100, 0);
+      const checkinsCount = posts.filter((post: any) => post.post_type === 'checkin').length;
+      
+      // Get user's streaks from all groups
+      let maxStreak = 0;
+      for (const group of groups) {
+        try {
+          const { streaks } = await apiClient.getGroupStreaks(group.id);
+          const userStreak = streaks.find((s: any) => s.user_id === user.id);
+          if (userStreak && userStreak.current_streak > maxStreak) {
+            maxStreak = userStreak.current_streak;
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch streaks for group ${group.id}:`, error);
+        }
+      }
+      
+      setStats({
+        groups: groupsCount,
+        streak: maxStreak,
+        checkins: checkinsCount
+      });
+    } catch (error) {
+      console.error('Failed to fetch user stats:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
   const handleUpdateProfile = async () => {
     if (!displayName.trim()) {
@@ -58,10 +111,28 @@ export default function ProfileScreen() {
     setIsUpdating(true);
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await updateUserProfile({ display_name: displayName.trim() });
+      let avatarUrl = user?.avatar_url || undefined;
+
+      // If user picked a new avatar (local uri), upload it directly (RN-safe)
+      if (selectedAvatarUri && !selectedAvatarUri.startsWith('http')) {
+        setIsUploadingAvatar(true);
+        const fileName = `avatar-${user?.id || 'me'}-${Date.now()}.jpg`;
+        try {
+          const direct = await apiClient.directUpload({ uri: selectedAvatarUri }, fileName, 'image/jpeg');
+          avatarUrl = (direct as any).url;
+        } catch (e2) {
+          console.warn('Avatar upload failed:', e2);
+        } finally {
+          setIsUploadingAvatar(false);
+        }
+      }
+
+      await updateUserProfile({ display_name: displayName.trim(), avatar_url: avatarUrl });
       setIsEditing(false);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Profile updated successfully!');
+      // Refresh stats after profile update
+      fetchUserStats();
     } catch (error) {
       console.error('Failed to update profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -101,10 +172,35 @@ export default function ProfileScreen() {
 
   const handleAvatarPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isEditing) {
+      pickAvatarFromGallery();
+      return;
+    }
     avatarScale.value = withSequence(
       withTiming(0.9, { duration: 100 }),
       withSpring(1, { damping: 15, stiffness: 300 })
     );
+  };
+
+  const pickAvatarFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow photo library access to set your profile picture.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaType.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setSelectedAvatarUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.warn('Avatar pick failed:', e);
+    }
   };
 
   const containerStyle = useAnimatedStyle(() => ({
@@ -139,15 +235,24 @@ export default function ProfileScreen() {
             <Animated.View style={[styles.profileHeader, containerStyle]}>
               <Animated.View style={[styles.avatarContainer, pulseStyle, avatarStyle]}>
                 <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8}>
-                  <LinearGradient
-                    colors={['#00D4FF', '#0099CC']}
-                    style={styles.avatarGradient}
-                  >
-                    <Text style={styles.avatarText}>
-                      {(user?.display_name || 'U').charAt(0).toUpperCase()}
-                    </Text>
+                  <LinearGradient colors={['#00D4FF', '#0099CC']} style={styles.avatarGradient}>
+                    {selectedAvatarUri || user?.avatar_url ? (
+                      <Image
+                        source={{ uri: selectedAvatarUri || (user?.avatar_url as string) }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <Text style={styles.avatarText}>
+                        {(user?.display_name || 'U').charAt(0).toUpperCase()}
+                      </Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
+                {isEditing && (
+                  <TouchableOpacity onPress={pickAvatarFromGallery} style={styles.cameraBadge} activeOpacity={0.8}>
+                    <Ionicons name="camera" size={16} color="#0F0F23" />
+                  </TouchableOpacity>
+                )}
               </Animated.View>
               
               <Text style={styles.userName}>{user?.display_name || 'User'}</Text>
@@ -155,17 +260,23 @@ export default function ProfileScreen() {
               
               <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>0</Text>
+                  <Text style={styles.statValue}>
+                    {isLoadingStats ? '...' : stats.groups}
+                  </Text>
                   <Text style={styles.statLabel}>Groups</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>0</Text>
+                  <Text style={styles.statValue}>
+                    {isLoadingStats ? '...' : stats.streak}
+                  </Text>
                   <Text style={styles.statLabel}>Streak</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>0</Text>
+                  <Text style={styles.statValue}>
+                    {isLoadingStats ? '...' : stats.checkins}
+                  </Text>
                   <Text style={styles.statLabel}>Check-ins</Text>
                 </View>
               </View>
@@ -186,6 +297,14 @@ export default function ProfileScreen() {
                   {isEditing ? (
                     <View style={styles.editContainer}>
                       <Text style={styles.inputLabel}>Display Name</Text>
+                      <TouchableOpacity 
+                        style={styles.secondaryButton}
+                        onPress={pickAvatarFromGallery}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="image" size={20} color="#00D4FF" />
+                        <Text style={styles.secondaryButtonText}>{isUploadingAvatar ? 'Uploading...' : 'Change Photo'}</Text>
+                      </TouchableOpacity>
                       <TextInput
                         style={styles.textInput}
                         value={displayName}
@@ -373,6 +492,21 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    backgroundColor: '#00D4FF',
+    borderRadius: 12,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: '#0F0F23',
   },
   avatarText: {
     color: 'white',
