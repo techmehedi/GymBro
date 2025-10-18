@@ -19,12 +19,11 @@ export default function SignInScreen() {
       return;
     }
     tempNavigation();
-    /* 
     try {
       await signIn(email.trim(), password);
     } catch (error) {
       Alert.alert('Sign In Failed', error instanceof Error ? error.message : 'An error occurred');
-    } */
+    }
   };
 
   const tempNavigation = () => {

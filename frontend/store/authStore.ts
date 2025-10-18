@@ -23,7 +23,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await apiClient.linkUser();
         
         // Get user profile
-        const { user } = await apiClient.getUserProfile();
+        const response = await apiClient.getUserProfile();
+        const { user } = response;
         
         set({ 
           user, 
@@ -59,7 +60,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await apiClient.linkUser();
         
         // Get user profile
-        const { user } = await apiClient.getUserProfile();
+        const response = await apiClient.getUserProfile();
+        const { user } = response;
         
         set({ 
           user, 
@@ -95,7 +97,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   linkUser: async () => {
     try {
-      const { user } = await apiClient.linkUser();
+      const response = await apiClient.linkUser();
+      const { user } = response;
       set({ user, isAuthenticated: true });
     } catch (error) {
       console.error('Link user error:', error);

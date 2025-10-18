@@ -9,7 +9,8 @@ export const useStreakStore = create<StreakState>((set, get) => ({
   fetchStreaks: async (groupId: string) => {
     set({ isLoading: true });
     try {
-      const { streaks } = await apiClient.getGroupStreaks(groupId);
+      const response = await apiClient.getGroupStreaks(groupId);
+      const { streaks } = response;
       set({ streaks, isLoading: false });
     } catch (error) {
       console.error('Fetch streaks error:', error);
