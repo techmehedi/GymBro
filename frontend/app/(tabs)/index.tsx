@@ -10,12 +10,14 @@ import {handlePlayAudio} from '../../lib/ailogic'; //for motivational audio you 
 
 
 export default function HomeScreen() {
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, isAuthenticated } = useAuthStore();
   const { groups, fetchGroups, isLoading } = useGroupStore();
 
   React.useEffect(() => {
-    fetchGroups();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchGroups();
+    }
+  }, [isAuthenticated, user]);
 const router = useRouter();
 
 const generateText = async () => {
@@ -57,7 +59,7 @@ const generateText = async () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Title>Welcome back, {user?.display_name}!</Title>
+        <Title>Welcome back, {user?.display_name || 'User'}!</Title>
         <Paragraph>Ready to crush your fitness goals today?</Paragraph> {/* should be Welcome Back, User w/ streaks */}
       </View>
       <View style={styles.content}>
