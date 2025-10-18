@@ -35,7 +35,7 @@
     "extra": {
       "supabaseUrl": "https://koudzeojjkteioowweel.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdWR6ZW9qamt0ZWlvb3d3ZWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTEyODUsImV4cCI6MjA3NjI4NzI4NX0.yHHgFWIYy2RNDMd5VHSuOiHZYgrG3fmTXQr9crYRS-Q",
-      "apiUrl": "http://192.168.12.122:8787"
+      "apiUrl": "https://peer-fitness-worker.gymbro.workers.dev"
     }
   }
 }
