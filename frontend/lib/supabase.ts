@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://koudzeojjkteioowweel.supabase.co';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvdWR6ZW9qamt0ZWlvb3d3ZWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTEyODUsImV4cCI6MjA3NjI4NzI4NX0.yHHgFWIYy2RNDMd5VHSuOiHZYgrG3fmTXQr9crYRS-Q';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -13,6 +13,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // For development, you might want to disable email confirmation
+    // This should be configured in your Supabase dashboard
   },
 });
 
@@ -50,22 +52,77 @@ export class ApiClient {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection and try again.');
+      }
+      throw error;
     }
+  }
 
-    return response.json();
+  // Health check
+  async healthCheck(): Promise<boolean> {
+    try {
+      // Create an AbortController for timeout (React Native compatible)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      const response = await fetch(`${this.baseUrl}/`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      // Avoid noisy logs if we simply timed out
+      if ((error as any)?.name === 'AbortError') {
+        return false;
+      }
+      console.warn('Health check issue:', error);
+      return false;
+    }
   }
 
   // Auth endpoints
   async linkUser(): Promise<{ user: any }> {
+    // Check if backend is healthy first
+    const isHealthy = await this.healthCheck();
+    if (!isHealthy) {
+      throw new Error('Backend service is not available. Please try again later.');
+    }
+    
     return this.request('/auth/link', { method: 'POST' });
+  }
+
+  // Link user with fallback - doesn't throw error if backend is unavailable
+  async linkUserWithFallback(): Promise<{ user: any } | null> {
+    try {
+      return await this.linkUser();
+    } catch (error) {
+      console.warn('Failed to link user to backend, will retry later:', error);
+      return null;
+    }
   }
 
   async getUserProfile(): Promise<{ user: any }> {
