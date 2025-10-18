@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { useGroupStore } from '../../store/groupStore';
 import { useAuthStore } from '../../store/authStore';
 import { handlePlayAudio } from '../../lib/ailogic';
+import { apiClient } from '../../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -161,12 +162,44 @@ export default function CheckInScreen() {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       
-      // This would create a post in the first group
-      // In a real app, you'd let the user select which group
-      console.log('Checking in:', checkInText);
+      // Upload image if selected
+      let imageUrl = null;
+      if (selectedImage) {
+        try {
+          // Get upload URL
+          const fileName = `checkin-${Date.now()}.jpg`;
+          const response = await apiClient.getUploadUrl(fileName, 'image/jpeg');
+          const { uploadUrl, fileName: uniqueFileName } = response as any;
+          
+          // Upload image to R2
+          const imageResponse = await fetch(selectedImage);
+          const blob = await imageResponse.blob();
+          
+          await fetch(uploadUrl, {
+            method: 'PUT',
+            body: blob,
+            headers: {
+              'Content-Type': 'image/jpeg',
+            },
+          });
+          
+          // Complete upload
+          const completeResponse = await apiClient.completeUpload(uniqueFileName, '', []);
+          const { url } = completeResponse as any;
+          imageUrl = url;
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          // Continue without image
+        }
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create post in the first group
+      await apiClient.createPost({
+        group_id: groups[0].id,
+        content: checkInText.trim(),
+        image_url: imageUrl,
+        post_type: 'checkin'
+      });
       
       setCheckInText('');
       setSelectedImage(null);
