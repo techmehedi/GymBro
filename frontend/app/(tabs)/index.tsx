@@ -24,7 +24,7 @@ import { handlePlayAudio } from '../../lib/ailogic';
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const { user, signOut, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { groups, fetchGroups, isLoading } = useGroupStore();
   const router = useRouter();
 
@@ -83,10 +83,7 @@ export default function HomeScreen() {
     await handlePlayAudio();
   };
 
-  const handleSignOut = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await signOut();
-  };
+  // No sign out here; sign out is available on the Profile tab only
 
   // Animated styles
   const containerStyle = useAnimatedStyle(() => ({
@@ -265,17 +262,7 @@ export default function HomeScreen() {
             </Animated.View>
           </ScrollView>
 
-          {/* Bottom Actions */}
-          <Animated.View style={[styles.bottomActions, containerStyle]}>
-            <TouchableOpacity 
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="log-out-outline" size={20} color="rgba(255, 255, 255, 0.6)" />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </Animated.View>
+          {/* Bottom Actions removed: Sign Out now lives in Profile tab */}
         </SafeAreaView>
       </LinearGradient>
     </View>
