@@ -165,31 +165,29 @@ export default function CheckInScreen() {
       // Upload image if selected
       let imageUrl = null;
       if (selectedImage) {
+        const fileName = `checkin-${Date.now()}.jpg`;
         try {
-          // Get upload URL
-          const fileName = `checkin-${Date.now()}.jpg`;
-          const response = await apiClient.getUploadUrl(fileName, 'image/jpeg');
-          const { uploadUrl, fileName: uniqueFileName } = response as any;
-          
-          // Upload image to R2
+          // Try presigned URL path first
+          const presign = await apiClient.getUploadUrl(fileName, 'image/jpeg');
+          const { uploadUrl, fileName: uniqueFileName } = presign as any;
+
           const imageResponse = await fetch(selectedImage);
           const blob = await imageResponse.blob();
-          
-          await fetch(uploadUrl, {
-            method: 'PUT',
-            body: blob,
-            headers: {
-              'Content-Type': 'image/jpeg',
-            },
-          });
-          
-          // Complete upload
-          const completeResponse = await apiClient.completeUpload(uniqueFileName, '', []);
+
+          await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
+
+          const completeResponse = await apiClient.completeUpload(uniqueFileName);
           const { url } = completeResponse as any;
           imageUrl = url;
         } catch (uploadError) {
-          console.error('Image upload failed:', uploadError);
-          // Continue without image
+          console.warn('Presigned upload failed, falling back to direct upload:', uploadError);
+          try {
+            const direct = await apiClient.directUpload({ uri: selectedImage }, fileName, 'image/jpeg');
+            imageUrl = (direct as any).url;
+          } catch (directErr) {
+            console.error('Direct upload failed:', directErr);
+            // Continue without image
+          }
         }
       }
       
@@ -205,10 +203,83 @@ export default function CheckInScreen() {
       setSelectedImage(null);
       
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Play motivation message automatically after check-in
+      try {
+        await handlePlayAudio();
+      } catch (motivationError) {
+        console.warn('Failed to play motivation message:', motivationError);
+      }
+      
       Alert.alert('Success', 'Check-in posted successfully!');
     } catch (error) {
       console.error('Failed to check in:', error);
       Alert.alert('Error', 'Failed to post check-in. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePhotoCheckIn = async () => {
+    if (!selectedImage || groups.length === 0) {
+      Alert.alert('Error', groups.length === 0 ? 'Join a group first!' : 'Please select a photo first');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      
+      // Upload image
+      let imageUrl = null;
+      try {
+        const fileName = `checkin-${Date.now()}.jpg`;
+        try {
+          const presign = await apiClient.getUploadUrl(fileName, 'image/jpeg');
+          const { uploadUrl, fileName: uniqueFileName } = presign as any;
+
+          const imageResponse = await fetch(selectedImage);
+          const blob = await imageResponse.blob();
+
+          await fetch(uploadUrl, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
+
+          const completeResponse = await apiClient.completeUpload(uniqueFileName);
+          const { url } = completeResponse as any;
+          imageUrl = url;
+        } catch (uploadError) {
+          console.warn('Presigned upload failed, falling back to direct upload:', uploadError);
+          const direct = await apiClient.directUpload({ uri: selectedImage }, fileName, 'image/jpeg');
+          imageUrl = (direct as any).url;
+        }
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError);
+        Alert.alert('Error', 'Failed to upload image. Please try again.');
+        return;
+      }
+      
+      // Create check-in post with photo
+      await apiClient.createPost({
+        group_id: groups[0].id,
+        content: `${user?.display_name || 'Someone'} just checked in with a photo! 📸`,
+        image_url: imageUrl,
+        post_type: 'checkin'
+      });
+      
+      setSelectedImage(null);
+      
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Play motivation message automatically after photo check-in
+      try {
+        await handlePlayAudio();
+      } catch (motivationError) {
+        console.warn('Failed to play motivation message:', motivationError);
+      }
+      
+      Alert.alert('Success', 'Photo check-in posted to group chat!');
+    } catch (error) {
+      console.error('Failed to check in with photo:', error);
+      Alert.alert('Error', 'Failed to post photo check-in. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -360,6 +431,25 @@ export default function CheckInScreen() {
                         <Ionicons name="close-circle" size={24} color="#FF0096" />
                       </TouchableOpacity>
                     </View>
+                  )}
+
+                  {selectedImage && (
+                    <TouchableOpacity 
+                      style={styles.primaryButton}
+                      onPress={handlePhotoCheckIn}
+                      disabled={isSubmitting || groups.length === 0}
+                      activeOpacity={0.8}
+                    >
+                      <LinearGradient
+                        colors={groups.length > 0 && !isSubmitting ? ['#00FF96', '#00CC77'] : ['#666', '#555']}
+                        style={styles.buttonGradient}
+                      >
+                        <Text style={styles.buttonText}>
+                          {isSubmitting ? 'Checking In...' : 'Check In with Photo'}
+                        </Text>
+                        <Ionicons name="checkmark-circle" size={20} color="white" />
+                      </LinearGradient>
+                    </TouchableOpacity>
                   )}
 
                   <View style={styles.photoButtons}>
@@ -578,6 +668,7 @@ const styles = StyleSheet.create({
   photoButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 12,
   },
   imagePreview: {
     position: 'relative',
