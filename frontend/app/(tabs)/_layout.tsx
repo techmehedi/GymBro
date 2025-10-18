@@ -1,14 +1,17 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import { useAuthStore } from '../../store/authStore';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 function TabLayout() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
   const tabBarHeight = useSharedValue(0);
 
   const animatedTabBarStyle = useAnimatedStyle(() => {
@@ -24,6 +27,12 @@ function TabLayout() {
       stiffness: 300,
     });
   }, []);
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isAuthenticated]);
 
   return (
     <>
