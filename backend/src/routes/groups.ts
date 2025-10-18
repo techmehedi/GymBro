@@ -436,7 +436,7 @@ app.post('/invitations/:id/decline', async (c) => {
   
   try {
     // Update invitation status
-    const result = await c.env?.DB.prepare(`
+    const result: any = await c.env?.DB.prepare(`
       UPDATE group_invitations 
       SET status = 'declined', updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND invitee_id = ? AND status = 'pending'
@@ -450,6 +450,67 @@ app.post('/invitations/:id/decline', async (c) => {
   } catch (error) {
     console.error('Error declining invitation:', error);
     return c.json({ error: 'Failed to decline invitation' }, 500);
+  }
+});
+
+// Delete group (only by creator/admin)
+app.delete('/:id', async (c) => {
+  const authResult = await verifyAuth(c);
+  if ('error' in authResult) return authResult;
+  
+  const { user } = authResult;
+  const groupId = c.req.param('id');
+  
+  try {
+    // Check if user is admin of group or the creator
+    const membership = await c.env?.DB.prepare(`
+      SELECT is_admin FROM group_members 
+      WHERE group_id = ? AND user_id = ?
+    `).bind(groupId, user.id).first();
+
+    // Also fetch created_by to allow creator to delete even if admin flag wasn't set
+    const group = await c.env?.DB.prepare(`
+      SELECT id, created_by FROM groups WHERE id = ?
+    `).bind(groupId).first();
+    
+    if (!group) {
+      return c.json({ error: 'Group not found' }, 404);
+    }
+    
+    const isAdmin = !!membership?.is_admin;
+    const isCreator = group.created_by === user.id;
+    if (!isAdmin && !isCreator) {
+      return c.json({ error: 'Only group admins can delete groups' }, 403);
+    }
+    
+    // Delete all related data in order
+    // 1. Delete group invitations
+    try { await c.env?.DB.prepare(`DELETE FROM group_invitations WHERE group_id = ?`).bind(groupId).run(); } catch {}
+    
+    // 2. Delete motivational messages (avoid FK constraint issues if cascades disabled)
+    try { await c.env?.DB.prepare(`DELETE FROM motivational_messages WHERE group_id = ?`).bind(groupId).run(); } catch {}
+    
+    // 3. Delete posts
+    try { await c.env?.DB.prepare(`DELETE FROM posts WHERE group_id = ?`).bind(groupId).run(); } catch {}
+    
+    // 4. Delete streaks
+    try { await c.env?.DB.prepare(`DELETE FROM streaks WHERE group_id = ?`).bind(groupId).run(); } catch {}
+    
+    // 5. Delete group members
+    try { await c.env?.DB.prepare(`DELETE FROM group_members WHERE group_id = ?`).bind(groupId).run(); } catch {}
+    
+    // 6. Delete group
+    await c.env?.DB.prepare(`
+      DELETE FROM groups WHERE id = ?
+    `).bind(groupId).run();
+    
+    return c.json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting group:', error);
+    return c.json({ 
+      error: 'Failed to delete group', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, 500);
   }
 });
 
