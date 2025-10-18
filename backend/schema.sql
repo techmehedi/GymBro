@@ -88,6 +88,32 @@ CREATE TABLE motivational_messages (
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
 
+-- User follows/followers
+CREATE TABLE user_follows (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  follower_id TEXT NOT NULL,
+  following_id TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(follower_id, following_id)
+);
+
+-- Group invitations
+CREATE TABLE group_invitations (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  group_id TEXT NOT NULL,
+  inviter_id TEXT NOT NULL,
+  invitee_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'accepted', 'declined'
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (invitee_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(group_id, invitee_id)
+);
+
 -- Indexes for better performance
 CREATE INDEX idx_posts_user_group ON posts(user_id, group_id);
 CREATE INDEX idx_posts_created_at ON posts(created_at DESC);
@@ -96,6 +122,11 @@ CREATE INDEX idx_group_members_group ON group_members(group_id);
 CREATE INDEX idx_group_members_user ON group_members(user_id);
 CREATE INDEX idx_push_tokens_user ON push_tokens(user_id);
 CREATE INDEX idx_motivational_messages_group ON motivational_messages(group_id);
+CREATE INDEX idx_user_follows_follower ON user_follows(follower_id);
+CREATE INDEX idx_user_follows_following ON user_follows(following_id);
+CREATE INDEX idx_group_invitations_group ON group_invitations(group_id);
+CREATE INDEX idx_group_invitations_invitee ON group_invitations(invitee_id);
+CREATE INDEX idx_group_invitations_status ON group_invitations(status);
 
 -- Triggers for updated_at timestamps
 CREATE TRIGGER update_users_updated_at 
