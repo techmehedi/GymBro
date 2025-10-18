@@ -29,14 +29,12 @@ export default function SignUpScreen() {
     }
 
     try {
-      const result = await signUp(email.trim(), password, displayName.trim());
-      if (result?.success) {
-        Alert.alert(
-          'Success!', 
-          result.message || 'Account created and signed in successfully!',
-          [{ text: 'OK' }]
-        );
-      }
+      await signUp(email.trim(), password, displayName.trim());
+      Alert.alert(
+        'Success!', 
+        'Account created and signed in successfully!',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       
