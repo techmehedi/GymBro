@@ -64,11 +64,11 @@ export class ApiClient {
   }
 
   // Auth endpoints
-  async linkUser() {
+  async linkUser(): Promise<{ user: any }> {
     return this.request('/auth/link', { method: 'POST' });
   }
 
-  async getUserProfile() {
+  async getUserProfile(): Promise<{ user: any }> {
     return this.request('/auth/profile');
   }
 
@@ -80,22 +80,22 @@ export class ApiClient {
   }
 
   // Group endpoints
-  async createGroup(data: { name: string; description?: string; max_members?: number }) {
+  async createGroup(data: { name: string; description?: string; max_members?: number }): Promise<{ group: any }> {
     return this.request('/groups', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async getGroups() {
+  async getGroups(): Promise<{ groups: any[] }> {
     return this.request('/groups');
   }
 
-  async getGroup(id: string) {
+  async getGroup(id: string): Promise<{ group: any }> {
     return this.request(`/groups/${id}`);
   }
 
-  async joinGroup(inviteCode: string) {
+  async joinGroup(inviteCode: string): Promise<{ group: any }> {
     return this.request('/groups/join', {
       method: 'POST',
       body: JSON.stringify({ invite_code: inviteCode }),
@@ -143,7 +143,7 @@ export class ApiClient {
     });
   }
 
-  async getGroupStreaks(groupId: string) {
+  async getGroupStreaks(groupId: string): Promise<{ streaks: any[] }> {
     return this.request(`/motivate/streaks/${groupId}`);
   }
 
