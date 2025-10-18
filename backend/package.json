@@ -1,0 +1,23 @@
+{
+  "name": "gymbro-backend",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for GymBro fitness app",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create gymbro-db",
+    "db:migrate": "wrangler d1 migrations apply gymbro-db",
+    "db:seed": "wrangler d1 execute gymbro-db --file=./schema.sql"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "hono": "^3.12.0",
+    "jose": "^5.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^3.19.0"
+  }
+}
