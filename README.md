@@ -1,299 +1,296 @@
-# Peer Accountability Fitness Network
+# GymBro - Fitness Accountability App
 
-A full-stack React Native mobile app built with Expo that helps small groups (2–5 friends) stay consistent with workouts through daily check-ins, streak tracking, and AI-powered motivation.
+A full-stack React Native mobile app built with Expo that helps small groups (2-5 friends) stay consistent with workouts through daily check-ins, streak tracking, and AI-powered motivation.
 
-## 🏗️ Architecture
+## 🏗️ Project Structure
 
-- **Frontend**: Expo (React Native + TypeScript) with Expo Router, NativeWind, React Native Paper
-- **Backend**: Cloudflare Workers with D1 (SQLite) database, R2 storage, and KV caching
-- **Authentication**: Supabase for email/social login
-- **AI Integration**: Google Gemini for motivational messages, ElevenLabs for voice clips
-- **State Management**: Zustand with React Query for server sync
-- **Notifications**: Expo Notifications for push reminders
+```
+GymBro/
+├── frontend/          # Expo React Native app
+│   ├── app/          # Expo Router pages
+│   │   ├── (tabs)/  # Tab navigation screens
+│   │   ├── auth/    # Authentication screens
+│   │   └── _layout.tsx
+│   ├── components/  # Reusable UI components
+│   ├── lib/         # Utilities and configurations
+│   ├── store/       # Zustand state management
+│   └── types/       # TypeScript type definitions
+├── backend/          # Cloudflare Worker API
+│   ├── src/
+│   │   ├── routes/  # API route handlers
+│   │   ├── types/   # Shared types
+│   │   └── index.ts # Main Worker entry point
+│   ├── schema.sql   # D1 database schema
+│   └── wrangler.toml
+└── docs/            # Documentation
+```
+
+## 🚀 Tech Stack
+
+### Frontend (Mobile App)
+- **Framework**: Expo (React Native + TypeScript)
+- **Navigation**: Expo Router
+- **Styling**: NativeWind (TailwindCSS for RN)
+- **UI Components**: React Native Paper
+- **State Management**: Zustand
+- **Server Sync**: React Query (TanStack)
+- **Notifications**: Expo Notifications
+- **Media**: Expo ImagePicker
+
+### Backend (API & Infrastructure)
+- **Runtime**: Cloudflare Workers
+- **Database**: Cloudflare D1 (SQLite)
+- **Caching**: Cloudflare KV
+- **Storage**: Cloudflare R2
+- **Scheduled Jobs**: Cloudflare Cron Triggers
+- **Authentication**: Supabase
+
+### AI Integrations
+- **Google Gemini API**: Motivational messages and summaries
+- **DigitalOcean Gradient**: Analytics and insights
+
+## 🛠️ Setup Instructions
+
+### Prerequisites
+- Node.js 18+
+- Expo CLI (`npm install -g @expo/cli`)
+- Cloudflare account
+- Supabase account
+- Google Gemini API key
+
+### Backend Setup
+
+1. **Navigate to backend directory**:
+   ```bash
+   cd backend
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure Cloudflare**:
+   - Create a Cloudflare account
+   - Get your Account ID from the dashboard
+   - Create a D1 database: `wrangler d1 create gymbro-db`
+   - Create KV namespace: `wrangler kv:namespace create "PUSH_TOKENS"`
+   - Create R2 bucket: `wrangler r2 bucket create gymbro-images`
+
+4. **Update wrangler.toml**:
+   - Replace `your-database-id-here` with your actual D1 database ID
+   - Replace `your-kv-namespace-id-here` with your KV namespace ID
+   - Update other configuration values
+
+5. **Set up environment variables**:
+   ```bash
+   cp env.example .env
+   # Edit .env with your actual values
+   ```
+
+6. **Deploy the database schema**:
+   ```bash
+   wrangler d1 migrations apply gymbro-db
+   ```
+
+7. **Deploy the Worker**:
+   ```bash
+   wrangler deploy
+   ```
+
+### Frontend Setup
+
+1. **Navigate to frontend directory**:
+   ```bash
+   cd frontend
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Set up Supabase**:
+   - Create a new Supabase project
+   - Get your project URL and anon key
+   - Update authentication settings to allow your domain
+
+4. **Configure environment variables**:
+   ```bash
+   cp env.example .env
+   # Edit .env with your actual values
+   ```
+
+5. **Start the development server**:
+   ```bash
+   npx expo start
+   ```
+
+6. **Run on device/simulator**:
+   - Install Expo Go app on your phone
+   - Scan the QR code from the terminal
+   - Or press `i` for iOS simulator, `a` for Android emulator
 
 ## 📱 Features
 
-- **Group Management**: Create/join fitness groups with invite codes
-- **Daily Check-ins**: Photo/text posts to share workout progress
-- **Streak Tracking**: Automatic streak calculation and leaderboards
-- **AI Motivation**: Gemini-generated motivational messages
-- **Voice Clips**: ElevenLabs text-to-speech for audio motivation
-- **Push Notifications**: Daily reminders and group activity alerts
-- **Real-time Updates**: Live group activity and streak updates
+### Core Features
+- **Group Management**: Create/join workout groups (2-5 friends)
+- **Daily Check-ins**: Photo or text updates
+- **Streak Tracking**: Visual progress tracking
+- **AI Motivation**: Personalized encouragement messages
+- **Push Notifications**: Gentle reminders and updates
+- **Social Feed**: See group members' progress
 
-## 🚀 Quick Start
+### API Endpoints
 
-### Prerequisites
+#### Authentication
+- `POST /auth/link` - Link Supabase user to GymBro database
+- `GET /auth/profile` - Get user profile
+- `PUT /auth/profile` - Update user profile
 
-- Node.js 18+ and npm/yarn
-- Expo CLI (`npm install -g @expo/cli`)
-- Cloudflare account with Workers, D1, R2, and KV access
-- Supabase account for authentication
-- Google Gemini API key
-- ElevenLabs API key (optional)
+#### Groups
+- `POST /groups` - Create a new group
+- `GET /groups` - Get user's groups
+- `GET /groups/:id` - Get group details
+- `POST /groups/join` - Join group by invite code
+- `DELETE /groups/:id/leave` - Leave group
 
-### 1. Clone and Setup
+#### Posts
+- `POST /posts` - Create a new post
+- `GET /posts/group/:groupId` - Get group posts
+- `GET /posts/user` - Get user's posts
+- `DELETE /posts/:id` - Delete post
 
+#### Motivation
+- `GET /motivate/group/:groupId` - Get motivational messages
+- `POST /motivate/generate` - Generate custom message
+- `GET /motivate/streaks/:groupId` - Get group streak summary
+
+#### Notifications
+- `POST /notify/register-token` - Register push token
+- `DELETE /notify/unregister-token` - Unregister push token
+- `GET /notify/settings` - Get notification settings
+
+#### Upload
+- `POST /upload/url` - Get upload URL for images
+- `POST /upload/complete` - Complete multipart upload
+- `GET /upload/user` - Get user's images
+- `DELETE /upload/:fileName` - Delete image
+
+## 🔧 Environment Variables
+
+### Backend (.env)
 ```bash
-git clone <your-repo>
-cd GymBro
+# Cloudflare Configuration
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
 
-# Setup Expo app
-cd peer-fitness
-npm install
+# Database Configuration
+D1_DATABASE_ID=your-d1-database-id
+D1_DATABASE_NAME=gymbro-db
 
-# Setup Cloudflare Worker
-cd ../fitness-worker
-npm install
-```
+# KV Namespace IDs
+KV_PUSH_TOKENS_ID=your-kv-namespace-id
 
-### 2. Environment Configuration
+# R2 Configuration
+R2_BUCKET_NAME=gymbro-images
+R2_ACCESS_KEY_ID=your-r2-access-key
+R2_SECRET_ACCESS_KEY=your-r2-secret-key
+R2_PUBLIC_URL=https://your-r2-domain.com
 
-#### Frontend (.env in peer-fitness/)
-```bash
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-EXPO_PUBLIC_API_URL=https://your-worker.your-subdomain.workers.dev
-```
-
-#### Backend (wrangler.toml in fitness-worker/)
-```bash
+# Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-GEMINI_API_KEY=your_gemini_api_key_here
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-R2_BUCKET_NAME=peer-fitness-images
-R2_ACCESS_KEY_ID=your_r2_access_key
-R2_SECRET_ACCESS_KEY=your_r2_secret_key
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# AI Services
+GEMINI_API_KEY=your-google-gemini-api-key
+
+# JWT Configuration
+JWT_SECRET=your-jwt-secret-key-here
+
+# Environment
+ENVIRONMENT=development
 ```
 
-### 3. Supabase Setup
-
-1. **Create Supabase Project:**
-   - Go to [supabase.com](https://supabase.com) and create a new project
-   - Note your project URL and anon key from Settings > API
-
-2. **Configure Authentication:**
-   - Go to Authentication > Settings
-   - Enable email authentication
-   - Optionally enable Google OAuth (for social login)
-   - Add your app URL to Site URL
-
-3. **Get Service Role Key:**
-   - Go to Settings > API
-   - Copy the `service_role` key (keep this secret!)
-
-### 4. Database Setup
-
+### Frontend (.env)
 ```bash
-cd fitness-worker
+# Supabase Configuration
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# Create D1 database
-npx wrangler d1 create peer-fitness-db
+# API Configuration
+EXPO_PUBLIC_API_URL=https://your-worker-domain.workers.dev
 
-# Apply schema
-npx wrangler d1 migrations apply peer-fitness-db
+# App Configuration
+EXPO_PUBLIC_APP_NAME=GymBro
+EXPO_PUBLIC_APP_VERSION=1.0.0
 
-# For local development
-npx wrangler d1 execute peer-fitness-db --local --file=./schema.sql
+# Development
+EXPO_PUBLIC_ENVIRONMENT=development
 ```
 
-### 5. Cloudflare Services Setup
+## 🚀 Deployment
 
-#### D1 Database
+### Backend Deployment
 ```bash
-# Create database
-npx wrangler d1 create peer-fitness-db
-
-# Update wrangler.toml with database_id
+cd backend
+wrangler deploy
 ```
 
-#### R2 Storage
+### Frontend Deployment
 ```bash
-# Create R2 bucket
-npx wrangler r2 bucket create peer-fitness-images
-```
-
-#### KV Storage
-```bash
-# Create KV namespace
-npx wrangler kv:namespace create "KV"
-```
-
-### 6. Run Locally
-
-#### Backend (Cloudflare Worker)
-```bash
-cd fitness-worker
-npm run dev
-```
-
-#### Frontend (Expo App)
-```bash
-cd peer-fitness
-npm start
-```
-
-## 📦 Deployment
-
-### Deploy Backend
-```bash
-cd fitness-worker
-npm run deploy
-```
-
-### Deploy Frontend
-```bash
-cd peer-fitness
-
-# Install EAS CLI
-npm install -g eas-cli
-
-# Login to Expo
-eas login
-
-# Configure project
-eas build:configure
-
+cd frontend
 # Build for production
 eas build --platform all
+# Submit to app stores
+eas submit --platform all
 ```
 
-## 🔧 API Endpoints
+## 🧪 Development
 
-### Authentication
-- `POST /api/auth/link` - Link push token
-- `GET /api/auth/profile` - Get user profile
+### Running Tests
+```bash
+# Backend tests (when implemented)
+cd backend && npm test
 
-### Groups
-- `GET /api/groups` - Get user's groups
-- `POST /api/groups` - Create new group
-- `POST /api/groups/join` - Join group with invite code
-- `GET /api/groups/:id` - Get group details
+# Frontend tests (when implemented)
+cd frontend && npm test
+```
 
-### Posts
-- `POST /api/posts` - Create daily check-in
-- `GET /api/posts/group/:groupId` - Get group posts
-- `GET /api/posts/streak/:groupId` - Get user's streak
-- `GET /api/posts/streaks/:groupId` - Get group streaks
-
-### AI Features
-- `POST /api/motivate/generate` - Generate motivational message
-- `GET /api/motivate/:groupId` - Get group messages
-- `POST /api/voice/generate` - Generate voice clip
-
-### Upload
-- `POST /api/upload/image` - Upload image directly
-- `POST /api/upload/presigned-url` - Get presigned upload URL
-
-### Notifications
-- `POST /api/notify/send` - Send push notification
-- `POST /api/notify/schedule-daily` - Schedule daily reminders
-
-## 🗄️ Database Schema
-
-### Users
-- `id` (TEXT PRIMARY KEY)
-- `clerk_id` (TEXT UNIQUE)
-- `email` (TEXT)
-- `name` (TEXT)
-- `avatar_url` (TEXT)
-- `push_token` (TEXT)
-
-### Groups
-- `id` (TEXT PRIMARY KEY)
-- `name` (TEXT)
-- `description` (TEXT)
-- `invite_code` (TEXT UNIQUE)
-- `created_by` (TEXT)
-
-### Posts
-- `id` (TEXT PRIMARY KEY)
-- `group_id` (TEXT)
-- `user_id` (TEXT)
-- `content` (TEXT)
-- `image_url` (TEXT)
-- `created_at` (DATETIME)
-
-### Streaks
-- `id` (TEXT PRIMARY KEY)
-- `user_id` (TEXT)
-- `group_id` (TEXT)
-- `current_streak` (INTEGER)
-- `longest_streak` (INTEGER)
-- `last_post_date` (DATE)
-
-## 🔄 Cron Jobs
-
-Daily cron triggers handle:
-- Streak resets for inactive users
-- Daily reminder notifications
-- Motivational message generation
-
-## 🎯 Hackathon Features
-
-### Google Gemini Integration
-- Generates personalized motivational messages
-- Creates weekly group summaries
-- Provides workout tips and encouragement
-
-### ElevenLabs Integration
-- Converts motivational messages to audio clips
-- Plays voice encouragement in the app
-- Supports multiple voice options
-
-### DigitalOcean Gradient (Optional)
-- Analytics for consistency insights
-- Partner matching algorithms
-- Performance tracking
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Supabase Authentication Errors**
-   - Verify Supabase URL and keys in environment variables
-   - Check Supabase dashboard for proper configuration
-   - Ensure service role key is used on backend, anon key on frontend
-
-2. **Database Connection Issues**
-   - Ensure D1 database is created and migrated
-   - Verify database_id in wrangler.toml
-
-3. **Image Upload Failures**
-   - Check R2 bucket permissions
-   - Verify R2 credentials in environment
-
-4. **Push Notification Issues**
-   - Ensure proper notification permissions
-   - Check Expo push token configuration
-
-### Development Tips
-
-- Use `npx wrangler dev` for local Worker development
-- Use `expo start` with tunnel for testing on physical devices
-- Check Cloudflare Workers logs for API debugging
-- Use React Query DevTools for state management debugging
+### Code Style
+- TypeScript strict mode enabled
+- ESLint configuration included
+- Prettier formatting (when configured)
 
 ## 📄 License
 
-MIT License - feel free to use this project for your hackathon!
+MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
-This is a hackathon project! Feel free to fork, modify, and improve. Key areas for enhancement:
-
-- Enhanced AI features
-- Better UI/UX design
-- Advanced analytics
-- Social features
-- Gamification elements
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## 📞 Support
 
-For hackathon demo support or questions, check the code comments for implementation details and API usage examples.
+For support and questions:
+- Create an issue in the GitHub repository
+- Check the documentation in the `/docs` folder
+- Review the API documentation
 
----
+## 🔮 Future Enhancements
 
-**Built for hackathon in under 36 hours! 🚀**
+- [ ] Voice message support
+- [ ] Workout plan sharing
+- [ ] Integration with fitness trackers
+- [ ] Advanced analytics
+- [ ] Group challenges and competitions
+- [ ] Meal planning integration
+- [ ] Progress photos comparison
+- [ ] Social features (likes, comments)
+- [ ] Achievement badges
+- [ ] Export data functionality
