@@ -118,3 +118,6 @@ backend/wrangler.toml
 
 # OS
 Thumbs.db
+
+.env
+wrangler.toml
