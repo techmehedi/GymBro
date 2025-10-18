@@ -1,0 +1,37 @@
+name = "gymbro-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "gymbro-api"
+
+[env.staging]
+name = "gymbro-api-staging"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "gymbro-db"
+database_id = "35f8f5ce-0644-4a3f-a3e9-e8693f649df8"
+
+# KV Storage for push tokens and counters
+[[kv_namespaces]]
+binding = "PUSH_TOKENS"
+id = "92c7c131afe84536a73eabc46c8f0d38"
+
+# R2 Storage for images
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "gymbro-images"
+
+# Cron Triggers for daily tasks
+[[triggers]]
+crons = ["0 9 * * *"] # Daily at 9 AM UTC
+
+[vars]
+# Environment variables
+ENVIRONMENT = "development"
+JWT_SECRET = "C1fhLUZA4dHYjJp6Vh0bksLBThJoRPpwUGkTj/D3kcyBZGJ9uWWfOIDDMuUWB/Ps0K9wcETzojFCKLJ/eSEZ3Q=="
+GEMINI_API_KEY = "AIzaSyA-KD3BKNjKD8WRJ6uULfI1ZZ_YoMgQRcA"
+SUPABASE_URL = "https://aozbdathzrfzcrhoumij.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFvemJkYXRoenJmemNyaG91bWlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTM3NTYsImV4cCI6MjA3NjI4OTc1Nn0.yTL6pakV66WfZjy_jSERW1BOC7aWDrfz0b2LzRsPZuc"
