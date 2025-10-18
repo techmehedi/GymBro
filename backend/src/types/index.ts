@@ -4,7 +4,6 @@ export interface Env {
   PUSH_TOKENS: KVNamespace;
   IMAGES: R2Bucket;
   ENVIRONMENT: string;
-  JWT_SECRET: string;
   GEMINI_API_KEY: string;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;

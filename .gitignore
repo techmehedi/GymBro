@@ -105,6 +105,7 @@ jspm_packages/
 # Cloudflare
 .wrangler/
 wrangler.toml.bak
+wrangler.toml
 
 # IDE
 .vscode/
