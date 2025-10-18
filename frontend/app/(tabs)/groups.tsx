@@ -17,12 +17,14 @@ import { useGroupStore } from '../../store/groupStore';
 import { useAuthStore } from '../../store/authStore';
 import { Group, User } from '../../types';
 import { apiClient } from '../../lib/supabase';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function GroupsScreen() {
-  const { groups, fetchGroups, isLoading, createGroup } = useGroupStore();
+  const { groups, fetchGroups, isLoading, createGroup, joinGroup } = useGroupStore();
   const { user } = useAuthStore();
+  const router = useRouter();
   
   // State for group creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,7 +70,7 @@ export default function GroupsScreen() {
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await createGroup({
+      const { group } = await createGroup({
         name: groupName.trim(),
         description: groupDescription.trim(),
         max_members: maxMembers,
@@ -79,7 +81,22 @@ export default function GroupsScreen() {
       setMaxMembers(5);
       setShowCreateModal(false);
       
-      Alert.alert('Success', 'Group created successfully!');
+      // Show invitation option after successful group creation
+      Alert.alert(
+        'Group Created!', 
+        'Would you like to invite users to your new group?',
+        [
+          { text: 'Skip', style: 'cancel' },
+          { 
+            text: 'Invite Users', 
+            onPress: () => {
+              setShowSearchModal(true);
+              // Store the created group ID for invitations
+              (window as any).currentGroupId = group.id;
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Failed to create group:', error);
       Alert.alert('Error', 'Failed to create group. Please try again.');
@@ -94,30 +111,8 @@ export default function GroupsScreen() {
 
     setIsSearching(true);
     try {
-      // This would be an API call to search users by username
-      // For now, we'll simulate with mock data
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          email: 'john@example.com',
-          display_name: 'John Doe',
-          avatar_url: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          email: 'jane@example.com',
-          display_name: 'Jane Smith',
-          avatar_url: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ].filter(user => 
-        user.display_name.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setSearchResults(mockUsers);
+      const { users } = await apiClient.searchUsers(query);
+      setSearchResults(users);
     } catch (error) {
       console.error('Search error:', error);
       Alert.alert('Error', 'Failed to search users');
@@ -135,39 +130,54 @@ export default function GroupsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleJoinGroup = async () => {
-    Alert.prompt(
-      'Join Group',
-      'Enter the invite code for the group you want to join:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Join', 
-          onPress: async (inviteCode) => {
-            if (!inviteCode?.trim()) return;
-            
-            try {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              // This would call the join group API
-              Alert.alert('Success', 'Joined group successfully!');
-            } catch (error) {
-              console.error('Join group error:', error);
-              Alert.alert('Error', 'Failed to join group. Please check the invite code.');
-            }
-          }
-        }
-      ]
-    );
+  const handleInviteUsers = async () => {
+    if (selectedUsers.length === 0) {
+      Alert.alert('Error', 'Please select at least one user to invite');
+      return;
+    }
+
+    const groupId = (window as any).currentGroupId;
+    if (!groupId) {
+      Alert.alert('Error', 'No group selected for invitation');
+      return;
+    }
+
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const { results } = await apiClient.inviteUsersToGroup(
+        groupId, 
+        selectedUsers.map(u => u.id)
+      );
+      
+      const successCount = results.filter((r: any) => r.status === 'success').length;
+      const errorCount = results.filter((r: any) => r.status === 'error').length;
+      
+      setSelectedUsers([]);
+      setSearchQuery('');
+      setSearchResults([]);
+      setShowSearchModal(false);
+      (window as any).currentGroupId = null;
+      
+      if (errorCount > 0) {
+        Alert.alert(
+          'Invitations Sent', 
+          `Successfully sent ${successCount} invitations. ${errorCount} failed.`
+        );
+      } else {
+        Alert.alert('Success', `Successfully sent ${successCount} invitations!`);
+      }
+    } catch (error) {
+      console.error('Failed to invite users:', error);
+      Alert.alert('Error', 'Failed to send invitations. Please try again.');
+    }
   };
 
-  const renderGroup = ({ item, index }: { item: Group; index: number }) => {
+  // Component used by FlatList items (hooks are allowed here)
+  const GroupItem = ({ item }: { item: Group }) => {
     const cardAnim = useSharedValue(0);
-    
+
     React.useEffect(() => {
-      cardAnim.value = withTiming(1, { 
-        duration: 600,
-        delay: index * 100 
-      });
+      cardAnim.value = withTiming(1, { duration: 600 });
     }, []);
 
     const cardStyle = useAnimatedStyle(() => ({
@@ -196,7 +206,7 @@ export default function GroupsScreen() {
                 </Text>
               </View>
             </View>
-            
+
             <View style={styles.groupStats}>
               <View style={styles.statItem}>
                 <Ionicons name="people-outline" size={16} color="rgba(255, 255, 255, 0.7)" />
@@ -210,7 +220,9 @@ export default function GroupsScreen() {
 
             <TouchableOpacity 
               style={styles.groupButton}
-              onPress={() => {/* Navigate to group details */}}
+              onPress={() => {
+                router.push(`/group/${item.id}`);
+              }}
               activeOpacity={0.8}
             >
               <Text style={styles.groupButtonText}>View Group</Text>
@@ -220,6 +232,35 @@ export default function GroupsScreen() {
         </BlurView>
       </Animated.View>
     );
+  };
+
+  const handleJoinGroup = async () => {
+    Alert.prompt(
+      'Join Group',
+      'Enter the invite code for the group you want to join:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Join', 
+          onPress: async (inviteCode?: string) => {
+            if (!inviteCode?.trim()) return;
+            
+            try {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              await joinGroup(inviteCode.trim());
+              Alert.alert('Success', 'Joined group successfully!');
+            } catch (error) {
+              console.error('Join group error:', error);
+              Alert.alert('Error', 'Failed to join group. Please check the invite code.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderGroup = ({ item, index }: { item: Group; index: number }) => {
+    return <GroupItem item={item} />;
   };
 
   const renderSearchResult = ({ item }: { item: User }) => {
@@ -412,6 +453,107 @@ export default function GroupsScreen() {
                       style={styles.createButtonGradient}
                     >
                       <Text style={styles.createButtonText}>Create Group</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </BlurView>
+          </Animated.View>
+        )}
+
+        {/* User Search Modal */}
+        {showSearchModal && (
+          <Animated.View style={[styles.modalOverlay, modalStyle]}>
+            <BlurView intensity={20} tint="dark" style={styles.modal}>
+              <LinearGradient
+                colors={['rgba(0, 0, 0, 0.9)', 'rgba(0, 0, 0, 0.8)']}
+                style={styles.modalGradient}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Invite Users</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowSearchModal(false);
+                      setSelectedUsers([]);
+                      setSearchQuery('');
+                      setSearchResults([]);
+                    }}
+                    style={styles.closeButton}
+                  >
+                    <Ionicons name="close" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalContent}>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Search Users</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={searchQuery}
+                      onChangeText={(text) => {
+                        setSearchQuery(text);
+                        handleSearchUsers(text);
+                      }}
+                      placeholder="Search by name or email"
+                      placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    />
+                  </View>
+
+                  {isSearching && (
+                    <View style={styles.loadingContainer}>
+                      <Text style={styles.loadingText}>Searching...</Text>
+                    </View>
+                  )}
+
+                  {searchResults.length > 0 && (
+                    <View style={styles.searchResultsContainer}>
+                      <Text style={styles.searchResultsTitle}>
+                        Found {searchResults.length} user{searchResults.length !== 1 ? 's' : ''}
+                      </Text>
+                      <FlatList
+                        data={searchResults}
+                        renderItem={renderSearchResult}
+                        keyExtractor={(item) => item.id}
+                        style={styles.searchResultsList}
+                        showsVerticalScrollIndicator={false}
+                      />
+                    </View>
+                  )}
+
+                  {selectedUsers.length > 0 && (
+                    <View style={styles.selectedUsersContainer}>
+                      <Text style={styles.selectedUsersTitle}>
+                        Selected ({selectedUsers.length})
+                      </Text>
+                      <View style={styles.selectedUsersList}>
+                        {selectedUsers.map((user) => (
+                          <View key={user.id} style={styles.selectedUserChip}>
+                            <Text style={styles.selectedUserText}>{user.display_name}</Text>
+                            <TouchableOpacity
+                              onPress={() => handleSelectUser(user)}
+                              style={styles.removeUserButton}
+                            >
+                              <Ionicons name="close" size={16} color="white" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  <TouchableOpacity 
+                    style={[styles.inviteButton, selectedUsers.length === 0 && styles.inviteButtonDisabled]}
+                    onPress={handleInviteUsers}
+                    activeOpacity={0.8}
+                    disabled={selectedUsers.length === 0}
+                  >
+                    <LinearGradient
+                      colors={selectedUsers.length > 0 ? ['#00D4FF', '#0099CC'] : ['#666', '#555']}
+                      style={styles.inviteButtonGradient}
+                    >
+                      <Text style={styles.inviteButtonText}>
+                        Invite {selectedUsers.length} User{selectedUsers.length !== 1 ? 's' : ''}
+                      </Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -706,5 +848,79 @@ const styles = StyleSheet.create({
   searchResultEmail: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 16,
+  },
+  searchResultsContainer: {
+    marginTop: 16,
+  },
+  searchResultsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 12,
+  },
+  searchResultsList: {
+    maxHeight: 200,
+  },
+  selectedUsersContainer: {
+    marginTop: 16,
+  },
+  selectedUsersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 12,
+  },
+  selectedUsersList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectedUserChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  selectedUserText: {
+    color: 'white',
+    fontSize: 14,
+    marginRight: 6,
+  },
+  removeUserButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteButton: {
+    borderRadius: 15,
+    overflow: 'hidden',
+    marginTop: 20,
+  },
+  inviteButtonDisabled: {
+    opacity: 0.5,
+  },
+  inviteButtonGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  inviteButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
