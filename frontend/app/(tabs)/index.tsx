@@ -59,7 +59,7 @@ const generateText = async () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Title>Welcome back, {user?.display_name || 'User'}!</Title>
+        <Title>{`Welcome back, ${user?.display_name || 'User'}!`}</Title>
         <Paragraph>Ready to crush your fitness goals today?</Paragraph> {/* should be Welcome Back, User w/ streaks */}
       </View>
       <View style={styles.content}>
@@ -67,7 +67,7 @@ const generateText = async () => {
           <Card.Content>
             <Title>Your Groups</Title>
             <Paragraph>
-              {groups.length > 0 
+              {groups && groups.length > 0 
                 ? `You're in ${groups.length} group${groups.length > 1 ? 's' : ''}`
                 : 'Join or create a group to get started!'
               }
@@ -77,7 +77,7 @@ const generateText = async () => {
               onPress={() => {/* Navigate to groups */}}
               style={styles.button}
             >
-              {groups.length > 0 ? 'View Groups' : 'Create Group'}
+              {groups && groups.length > 0 ? 'View Groups' : 'Create Group'}
             </Button>
           </Card.Content>
         </Card>
