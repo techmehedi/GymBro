@@ -4,25 +4,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Title, Paragraph, TextInput } from 'react-native-paper';
 import { Link } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
+import { useRouter } from 'expo-router';
 
 export default function SignInScreen() {
   const { signIn, isLoading } = useAuthStore();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
 
+  const router = useRouter();
+
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
+    tempNavigation();
+    /* 
     try {
       await signIn(email.trim(), password);
     } catch (error) {
       Alert.alert('Sign In Failed', error instanceof Error ? error.message : 'An error occurred');
-    }
+    } */
   };
 
+  const tempNavigation = () => {
+    router.push('/(tabs)')
+  }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
