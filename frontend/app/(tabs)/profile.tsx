@@ -128,6 +128,7 @@ export default function ProfileScreen() {
       }
 
       await updateUserProfile({ display_name: displayName.trim(), avatar_url: avatarUrl });
+      setSelectedAvatarUri(null);
       setIsEditing(false);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Profile updated successfully!');
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
     }
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.9,
