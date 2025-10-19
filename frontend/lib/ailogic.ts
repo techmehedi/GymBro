@@ -79,15 +79,12 @@ const generateText = async () => {
             { shouldPlay: true, volume: 1.0 }
           );
           
-          console.log('Audio created, playing...');
           Alert.alert('Success', 'Audio is playing! 🎵');
           
           // Clean up when done
           sound.setOnPlaybackStatusUpdate((status) => {
             if (status.isLoaded) {
-              console.log('Playback status:', status);
               if (status.didJustFinish) {
-                console.log('Audio finished playing');
                 sound.unloadAsync();
               }
             }
